@@ -1,0 +1,13 @@
+services:
+  bank_simulator:
+    container_name: bank_simulator
+    image: bbyars/mountebank:2.9.4
+    ports:
+      - "2525:2525"
+      - "8080:8080"
+    command: --configfile /simulators/bank_simulator.ejs --allowInjection
+    volumes:
+      - type: bind
+        source: ./simulators
+        target: /simulators
+      
