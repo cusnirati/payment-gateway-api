@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Serilog.Context;
 
-namespace PaymentGateway.Middleware;
+namespace PaymentGatewayApi.Middleware;
 
 public class LogMiddleware
 {

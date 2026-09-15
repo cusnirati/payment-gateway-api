@@ -1,6 +1,6 @@
 using System;
 
-namespace PaymentGateway.Models;
+namespace PaymentGatewayApi.Models;
 
 // todo put json example
 public class PostPaymentResponse

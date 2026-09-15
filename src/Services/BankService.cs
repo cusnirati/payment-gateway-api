@@ -1,11 +1,11 @@
 using System.Net.Http;
 using System.Threading.Tasks;
-using PaymentGateway.Models;
-using PaymentGateway.Services;
+using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Services;
 using Microsoft.Extensions.Logging;
 using Serilog;
 
-namespace PaymentGateway.Services;
+namespace PaymentGatewayApi.Services;
 
 public interface IBankService
 {

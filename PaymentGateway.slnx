@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/PaymentGateway.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/PaymentGateway.Tests/PaymentGateway.Tests.csproj" />
-  </Folder>
-</Solution>

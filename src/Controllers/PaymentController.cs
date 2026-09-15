@@ -6,13 +6,13 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using PaymentGateway.Models;
-using PaymentGateway.Services;
+using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace PaymentGateway.Controllers;
+namespace PaymentGatewayApi.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]

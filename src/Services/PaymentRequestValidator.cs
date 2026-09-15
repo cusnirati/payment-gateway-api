@@ -1,9 +1,9 @@
 using System;
 using System.Text.RegularExpressions;
-using PaymentGateway.Models;
+using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
 
-namespace PaymentGateway.Services;
+namespace PaymentGatewayApi.Services;
 
 public interface IPaymentRequestValidator
 {

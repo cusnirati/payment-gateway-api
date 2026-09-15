@@ -1,5 +1,5 @@
-using PaymentGateway.Middleware;
-using PaymentGateway.Services;
+using PaymentGatewayApi.Middleware;
+using PaymentGatewayApi.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

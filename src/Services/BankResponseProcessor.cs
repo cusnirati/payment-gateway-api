@@ -2,10 +2,10 @@ using System;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using PaymentGateway.Models;
+using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
 
-namespace PaymentGateway.Services;
+namespace PaymentGatewayApi.Services;
 
 public interface IBankResponseProcessor
 {

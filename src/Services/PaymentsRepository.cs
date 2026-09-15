@@ -6,10 +6,10 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using PaymentGateway.Models;
+using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
 
-namespace PaymentGateway.Services;
+namespace PaymentGatewayApi.Services;
 
 public interface IPostPaymentRepository
 {

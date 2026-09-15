@@ -1,4 +1,4 @@
-namespace PaymentGateway.Models;
+namespace PaymentGatewayApi.Models;
 
 // example json payload
 // {

@@ -1,11 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY PaymentGateway.csproj .
-RUN dotnet restore PaymentGateway.csproj
+COPY PaymentGatewayApi.csproj .
+RUN dotnet restore PaymentGatewayApi.csproj
 
 COPY . .
-RUN dotnet publish PaymentGateway.csproj \
+RUN dotnet publish PaymentGatewayApi.csproj \
     -c Release \
     -o /app/publish \
     /p:UseAppHost=false
@@ -18,4 +18,4 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "PaymentGateway.dll"]
+ENTRYPOINT ["dotnet", "PaymentGatewayApi.dll"]
