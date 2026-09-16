@@ -50,10 +50,7 @@ public class PaymentController : Controller
 
         if (payment is null)
         {
-            return new NotFoundObjectResult(new
-            {
-                message = "Payment not found"
-            });
+            return new NotFoundObjectResult("payment not found");
         }
 
         return new OkObjectResult(payment);

@@ -96,7 +96,7 @@ public class PostPaymentRepository : IPostPaymentRepository
             // todo
             this.logger.LogWarning(
                 "paymentId={PaymentId}, OperationStatus={OperationStatus}",
-                paymentId, response.HttpStatusCode, "NotFound");
+                paymentId, "NotFound");
 
             return null;
         }
