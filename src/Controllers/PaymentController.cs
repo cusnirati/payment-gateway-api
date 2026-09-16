@@ -48,6 +48,14 @@ public class PaymentController : Controller
         this.logger.LogInformation("GetPayment.Received, PaymentId={PaymentId}", paymentId);
         var payment = await this.paymentRepo.Get(paymentId);
 
+        if (payment is null)
+        {
+            return new NotFoundObjectResult(new
+            {
+                message = "Payment not found"
+            });
+        }
+
         return new OkObjectResult(payment);
     }
 

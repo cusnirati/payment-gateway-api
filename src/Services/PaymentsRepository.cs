@@ -14,7 +14,7 @@ namespace PaymentGatewayApi.Services;
 public interface IPostPaymentRepository
 {
     Task Add(PostPaymentResponse payment);
-    Task<PostPaymentResponse?> Get(string id);
+    Task<PostPaymentResponse?> Get(string paymentId);
 }
 
 public class PostPaymentRepository : IPostPaymentRepository
@@ -48,7 +48,7 @@ public class PostPaymentRepository : IPostPaymentRepository
         if (response.HttpStatusCode != HttpStatusCode.OK)
         {
             this.logger.LogError(
-                "paymentId={PaymentId} StatusCode={StatusCode}, ContentLength={ContentLength}, OperationStatus={OperationStatus}",
+                "paymentId={PaymentId}, StatusCode={StatusCode}, ContentLength={ContentLength}, OperationStatus={OperationStatus}",
                 payment.PaymentId, response.HttpStatusCode, response.ContentLength, "Failed");
 
             throw new InternalServerErrorException();
@@ -59,7 +59,7 @@ public class PostPaymentRepository : IPostPaymentRepository
 
     // todo same as above
     //
-    public async Task<PostPaymentResponse?> Get(string id)
+    public async Task<PostPaymentResponse?> Get(string paymentId)
     {
         var config = new AmazonDynamoDBConfig
         {
@@ -71,7 +71,7 @@ public class PostPaymentRepository : IPostPaymentRepository
 
         var key = new Dictionary<string, AttributeValue>
         {
-            ["PaymentId"] = new AttributeValue { S = id }
+            ["PaymentId"] = new AttributeValue { S = paymentId }
         };
 
         var request = new GetItemRequest { Key = key, TableName = "Payments" };
@@ -79,11 +79,12 @@ public class PostPaymentRepository : IPostPaymentRepository
 
         if (response.HttpStatusCode != HttpStatusCode.OK)
         {
+            // todo log error
             throw new Exception();
         }
 
         PostPaymentResponse? payment;
-        if (response.Item.Any())
+        if (response.Item != null && response.Item.Any())
         {
             string raw = response.Item["PaymentRaw"].S;
             payment = JsonSerializer.Deserialize<PostPaymentResponse>(raw);
@@ -92,7 +93,11 @@ public class PostPaymentRepository : IPostPaymentRepository
         }
         else
         {
-            // log
+            // todo
+            this.logger.LogWarning(
+                "paymentId={PaymentId}, OperationStatus={OperationStatus}",
+                paymentId, response.HttpStatusCode, "NotFound");
+
             return null;
         }
     }
