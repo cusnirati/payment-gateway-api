@@ -4,8 +4,7 @@ bin/
 obj/
 .vscode/
 
-z-logs/*
-!z-logs/.gitkeep
+src/z-logs/*.log
 
 deploy/aws/*
 !deploy/aws/.gitkeep
