@@ -3,7 +3,9 @@ z-notes.md
 bin/
 obj/
 .vscode/
-z-logs/
+
+z-logs/*
+!z-logs/.gitkeep
 
 deploy/aws/*
 !deploy/aws/.gitkeep
