@@ -4,3 +4,6 @@ bin/
 obj/
 .vscode/
 z-logs/
+
+deploy/aws/*
+!deploy/aws/.gitkeep

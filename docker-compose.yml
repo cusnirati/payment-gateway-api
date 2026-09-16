@@ -1,13 +1,24 @@
 services:
-  bank_simulator:
-    container_name: bank_simulator
+  bank-simulator:
+    container_name: bank-simulator
     image: bbyars/mountebank:2.9.4
     ports:
       - "2525:2525"
       - "8080:8080"
-    command: --configfile /Simulators/bank_simulator.ejs --allowInjection
+    command: --configfile /Simulators/bank-simulator.ejs --allowInjection
     volumes:
       - type: bind
-        source: ./Simulators
+        source: src/Simulators
         target: /Simulators
-      
+
+  payment-gateway-api:
+    image: payment-gateway-api
+    build:
+      context: src/
+    environment:
+      ASPNETCORE_URLS: http://+:80
+    ports:
+      - "5067:80"
+      - "7092:443"
+    depends_on:
+      - bank-simulator
