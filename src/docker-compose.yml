@@ -1,0 +1,47 @@
+services:
+
+  dynamodb:
+    container_name: dynamodb-local
+    image: amazon/dynamodb-local:3.3.1
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+
+  dynamodb-init:
+    image: amazon/aws-cli:2.36.46
+    depends_on:
+      - dynamodb
+    environment:
+      AWS_ACCESS_KEY_ID: "dummy"
+      AWS_SECRET_ACCESS_KEY: "dummy"
+      AWS_DEFAULT_REGION: "eu-west-2"
+    entrypoint: ["/bin/sh", "-c"]
+    command: 
+      - |
+        until aws dynamodb list-tables --endpoint-url http://dynamodb:8000 >/dev/null 2>&1; do
+          echo "Waiting for DynamoDB..."
+          sleep 1
+        done
+
+        aws dynamodb create-table \
+        --endpoint-url http://dynamodb:8000 \
+        --table-name Payments \
+        --attribute-definitions \
+            AttributeName=PaymentId,AttributeType=S \
+        --key-schema AttributeName=PaymentId,KeyType=HASH \
+        --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
+        --table-class STANDARD > /dev/null
+
+  bank-simulator:
+    container_name: bank-simulator
+    image: bbyars/mountebank:2.9.4
+    depends_on:
+      - dynamodb-init
+    ports:
+      - "2525:2525"
+      - "8080:8080"
+    command: --configfile /Simulators/bank-simulator.ejs --allowInjection
+    volumes:
+      - type: bind
+        source: ./Simulators
+        target: /Simulators

@@ -32,7 +32,7 @@ public class PaymentController : Controller
         this.bankService = bankService;
     }
 
-    // curl -k https://localhost:7092/api/payment
+    // curl -k http://localhost:5067/api/payment
     [HttpGet()]
     public async Task<ActionResult<string>> GetHealthcheck()
     {
@@ -41,7 +41,7 @@ public class PaymentController : Controller
         return new OkObjectResult("ok");
     }
 
-    // curl -k https://localhost:7092/api/payment/16bd4749-d150-48d1-a3ce-257457d74d1f
+    // curl -k http://localhost:5067/api/payment/16bd4749-d150-48d1-a3ce-257457d74d1f
     [HttpGet("{paymentId}")]
     public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId)
     {

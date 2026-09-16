@@ -44,7 +44,7 @@ public class PostPaymentRepository : IPostPaymentRepository
         };
 
         // todo add try catch
-        PutItemResponse response = await client.PutItemAsync("postPayments", item);
+        PutItemResponse response = await client.PutItemAsync("Payments", item);
         if (response.HttpStatusCode != HttpStatusCode.OK)
         {
             this.logger.LogError(
@@ -74,7 +74,7 @@ public class PostPaymentRepository : IPostPaymentRepository
             ["PaymentId"] = new AttributeValue { S = id }
         };
 
-        var request = new GetItemRequest { Key = key, TableName = "postPayments" };
+        var request = new GetItemRequest { Key = key, TableName = "Payments" };
         GetItemResponse? response = await client.GetItemAsync(request);
 
         if (response.HttpStatusCode != HttpStatusCode.OK)
