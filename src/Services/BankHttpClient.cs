@@ -17,7 +17,6 @@ public interface IBankHttpClient
 public class BankHttpClient : IBankHttpClient
 {
     private readonly ILogger<BankHttpClient> logger;
-
     private readonly IConfiguration config;
 
     public BankHttpClient(ILogger<BankHttpClient> logger, IConfiguration config)
@@ -42,18 +41,19 @@ public class BankHttpClient : IBankHttpClient
             Cvv = payment.Cvv
         };
 
-        // todo use simple httpClient for dev purpose
-        // maybe later use a factory in Program.cs
+        // using simple httpClient for dev purpose
+        // ideally a fine tuned library or use a clientFactory in Program.cs
+        // same goes for retries, timeouts
         // https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/http/httpclient-guidelines#recommended-use
 
-        // todo add exception handling
-        // add comments about retries
-
+        // todo exception catch
+        // see if using needed
 
         using HttpClient client = new();
         client.BaseAddress = new Uri(bankEndpoint);
         HttpResponseMessage response = await client.PostAsJsonAsync($"/payments", request);
 
+        // todo double check log format. no paymentId
         this.logger.LogInformation("PostBankPayment.Completed, HttpStatusCode={HttpStatusCode}", (int)response.StatusCode);
 
         return response;

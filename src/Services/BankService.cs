@@ -43,7 +43,8 @@ public class BankService : IBankService
         }
         else
         {
-            // todo log
+            this.logger.LogError("ExecuteBankPayment.Failed, Status={Status}", "Failed");
+
             return PaymentStatus.InternalError;
         }
     }

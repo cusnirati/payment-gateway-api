@@ -44,6 +44,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         result.Currency = request.Currency;
         result.Amount = request.Amount;
 
+        // todo double check log format. no paymentId
         this.logger.LogInformation(
             "ParseBankResponse.Completed, Authorized={Authorized}, AuthorizationCode={AuthorizationCode}",
             bankResponse.Authorized, bankResponse.AuthorizationCode);
