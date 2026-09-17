@@ -16,7 +16,7 @@ services:
       AWS_SECRET_ACCESS_KEY: "dummy"
       AWS_DEFAULT_REGION: "eu-west-2"
     entrypoint: ["/bin/sh", "-c"]
-    command: 
+    command:
       - |
         until aws dynamodb list-tables --endpoint-url http://dynamodb:8000 >/dev/null 2>&1; do
           echo "Waiting for DynamoDB..."
@@ -30,7 +30,9 @@ services:
             AttributeName=PaymentId,AttributeType=S \
         --key-schema AttributeName=PaymentId,KeyType=HASH \
         --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
-        --table-class STANDARD > /dev/null
+        --table-class STANDARD > /dev/null 2>&1
+
+        echo "local dynamodb setup completed"
 
   bank-simulator:
     container_name: bank-simulator

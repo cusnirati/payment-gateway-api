@@ -46,8 +46,8 @@ public class PaymentController : Controller
     public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId)
     {
         this.logger.LogInformation("GetPayment.Received, PaymentId={PaymentId}", paymentId);
+        
         var payment = await this.paymentRepo.Get(paymentId);
-
         if (payment is null)
         {
             return new NotFoundObjectResult("payment not found");

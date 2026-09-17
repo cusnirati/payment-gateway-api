@@ -27,7 +27,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         BankResponse? bankResponse = await response.Content.ReadFromJsonAsync<BankResponse>();
         PostPaymentResponse result = new();
 
-        if (bankResponse == null)
+        if (bankResponse is null)
         {
             this.logger.LogError("ParseBankResponse.NullBankResponse, Status={Status}", "Failed");
 
