@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "ANY",
+    "urlPattern": ".*"
+  },
+  "response": {
+    "status": 400,
+    "headers": {
+      "Content-Type": "application/json",
+      "Connection": "keep-alive"
+    },
+    "jsonBody": { "errorMessage": "The request supplied is not supported by the simulator" }
+  }
+}

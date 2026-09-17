@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/payments",
+    "bodyPatterns": [
+      { "matchesJsonPath": { "expression": "$.card_number", "matches": "^.*0$" } },
+      { "matchesJsonPath": "$.expiry_date" },
+      { "matchesJsonPath": "$.currency" },
+      { "matchesJsonPath": "$.amount" },
+      { "matchesJsonPath": "$.cvv" }
+    ]
+  },
+  "response": {
+    "status": 503,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {}
+  }
+}

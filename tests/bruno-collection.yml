@@ -19,7 +19,7 @@ items:
       seq: 2
     http:
       method: GET
-      url: http://localhost:5067/api/payment/184a7372-9b14-4205-9f04-0d3519b6745a
+      url: http://localhost:5067/api/payment/abcbc011-c8d9-484b-a67a-28fbda7461f3
       auth: inherit
     settings:
       encodeUrl: true
@@ -114,7 +114,7 @@ items:
   - info:
       name: post simulator payment
       type: http
-      seq: 5
+      seq: 6
     http:
       method: POST
       url: http://localhost:8080/payments
@@ -140,11 +140,46 @@ items:
       followRedirects: true
       maxRedirects: 5
       forwardAuthorizationHeader: true
+  - info:
+      name: post payment error 500
+      type: http
+      seq: 5
+    http:
+      method: POST
+      url: http://localhost:5067/api/payment
+      headers:
+        - name: Content-Type
+          value: application/json
+        - name: Accept
+          value: '*'
+        - name: CallerId
+          value: bruno-client
+        - name: CorrelationId
+          value: '12345'
+          disabled: true
+      body:
+        type: json
+        data: |-
+          {
+            "cardnumber": "2222405343248870",
+            "ExpiryMonth": "11",
+            "ExpiryYear": "2027",
+            "currency": "GBP",
+            "amount": 100,
+            "cvv": "123"
+          }
+      auth: inherit
+    settings:
+      encodeUrl: true
+      timeout: 0
+      followRedirects: true
+      maxRedirects: 5
+      forwardAuthorizationHeader: true
 bundled: true
 extensions:
   bruno:
     ignore:
       - node_modules
       - .git
-    exportedAt: '2026-09-17T13:29:11.426Z'
+    exportedAt: '2026-09-17T16:12:41.103Z'
     exportedUsing: Bruno

@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/payments",
+    "bodyPatterns": [
+      {
+        "or": [
+          { "doesNotMatch": "(?s).*\"card_number\"\\s*:.*" },
+          { "doesNotMatch": "(?s).*\"expiry_date\"\\s*:.*" },
+          { "doesNotMatch": "(?s).*\"currency\"\\s*:.*" },
+          { "doesNotMatch": "(?s).*\"amount\"\\s*:.*" },
+          { "doesNotMatch": "(?s).*\"cvv\"\\s*:.*" }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "status": 400,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": { "error_message": "Not all required properties were sent in the request" }
+  }
+}

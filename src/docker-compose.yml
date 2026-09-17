@@ -34,16 +34,16 @@ services:
 
         echo "local dynamodb setup completed"
 
-  bank-simulator:
-    container_name: bank-simulator
-    image: bbyars/mountebank:2.9.4
+# https://github.com/wiremock/wiremock
+  bank-simulator-wiremock:
+    container_name: bank-simulator-wiremock
+    image: wiremock/wiremock:3.13.2
     depends_on:
       - dynamodb-init
     ports:
-      - "2525:2525"
       - "8080:8080"
-    command: --configfile /Simulators/bank-simulator.ejs --allowInjection
+    command: --global-response-templating --verbose
     volumes:
       - type: bind
-        source: ./Simulators
-        target: /Simulators
+        source: ./Simulators/wiremock
+        target: /home/wiremock

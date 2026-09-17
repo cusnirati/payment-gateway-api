@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/payments",
+    "bodyPatterns": [
+      { "matchesJsonPath": { "expression": "$.card_number", "matches": "^.*[13579]$" } },
+      { "matchesJsonPath": "$.expiry_date" },
+      { "matchesJsonPath": "$.currency" },
+      { "matchesJsonPath": "$.amount" },
+      { "matchesJsonPath": "$.cvv" }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "body": "{\"authorized\":true,\"authorization_code\":\"{{randomValue type='UUID'}}\"}"
+  }
+}
