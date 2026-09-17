@@ -31,20 +31,19 @@ public class BankService : IBankService
     public async Task<PaymentStatus> ExecutePayment(PaymentRequest payment)
     {
         this.logger.LogInformation("ExecuteBankPayment.Received, PaymentId={PaymentId}", payment.PaymentId);
-        
+
         HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(payment);
         if (bankResponse.IsSuccessStatusCode)
         {
             PostPaymentResponse paymentResponse = await this.responseProcessor.ParseBankResponse(payment, bankResponse);
-            if (paymentResponse.Status == PaymentStatus.Authorized)
-            {
-                await this.paymentRepo.Add(paymentResponse);
-            }
+            // or more complex logic for status != PaymentStatus.Authorized
+            await this.paymentRepo.Add(paymentResponse);
 
             return paymentResponse.Status;
         }
         else
         {
+            // todo log
             return PaymentStatus.InternalError;
         }
     }

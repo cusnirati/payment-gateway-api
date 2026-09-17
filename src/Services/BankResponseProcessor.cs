@@ -37,7 +37,7 @@ public class BankResponseProcessor : IBankResponseProcessor
 
         result.Status = bankResponse.Authorized ? PaymentStatus.Authorized : PaymentStatus.Declined;
         result.CardNumberLastFour = request.CardNumber.Substring(request.CardNumber.Length - 4);
-        
+
         result.PaymentId = request.PaymentId;
         result.ExpiryMonth = request.ExpiryMonth;
         result.ExpiryYear = request.ExpiryYear;
@@ -46,8 +46,7 @@ public class BankResponseProcessor : IBankResponseProcessor
 
         this.logger.LogInformation(
             "ParseBankResponse.Completed, Authorized={Authorized}, AuthorizationCode={AuthorizationCode}",
-            bankResponse.Authorized,
-            bankResponse.AuthorizationCode);
+            bankResponse.Authorized, bankResponse.AuthorizationCode);
 
         return result;
     }

@@ -2,7 +2,6 @@ using System;
 
 namespace PaymentGatewayApi.Models;
 
-// todo put json example
 public class PostPaymentResponse
 {
     public string? PaymentId { get; set; }

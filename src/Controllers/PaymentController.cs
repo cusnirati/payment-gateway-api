@@ -46,7 +46,7 @@ public class PaymentController : Controller
     public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId)
     {
         this.logger.LogInformation("GetPayment.Received, PaymentId={PaymentId}", paymentId);
-        
+
         var payment = await this.paymentRepo.Get(paymentId);
         if (payment is null)
         {
@@ -74,20 +74,14 @@ public class PaymentController : Controller
             return new BadRequestObjectResult(PaymentStatus.Rejected.ToString());
         }
 
-        this.logger.LogInformation("PostPayment.ValidationCompleted, PaymentId={PaymentId}", payment.PaymentId);
+        // good place to split into a separate service if validation would include fraud detection, sanction screening, etc
 
-        // good place to split into a separate service
-        // since in validation can be included fraud detection, sanction screening, etc
-
-        PaymentStatus status = await this.bankService.ExecutePayment(payment);
+        var status = await this.bankService.ExecutePayment(payment);
         if (status == PaymentStatus.Authorized)
         {
             return new OkObjectResult(payment.PaymentId);
         }
-        else
-        {
-            // todo. if insufficient funds still return ok
-            return new BadRequestObjectResult(status.ToString());
-        }
+
+        return new BadRequestObjectResult(status.ToString());
     }
 }
