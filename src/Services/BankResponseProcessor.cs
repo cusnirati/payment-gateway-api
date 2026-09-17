@@ -25,30 +25,30 @@ public class BankResponseProcessor : IBankResponseProcessor
     {
         // todo try catch
         BankResponse? bankResponse = await response.Content.ReadFromJsonAsync<BankResponse>();
-        PostPaymentResponse result = new();
+        PostPaymentResponse paymentResponse = new();
 
         if (bankResponse is null)
         {
             this.logger.LogError("ParseBankResponse.NullBankResponse, Status={Status}", "Failed");
 
-            result.Status = PaymentStatus.InternalError;
-            return result;
+            paymentResponse.Status = PaymentStatus.InternalError;
+            return paymentResponse;
         }
 
-        result.Status = bankResponse.Authorized ? PaymentStatus.Authorized : PaymentStatus.Declined;
-        result.CardNumberLastFour = request.CardNumber.Substring(request.CardNumber.Length - 4);
+        paymentResponse.Status = bankResponse.Authorized ? PaymentStatus.Authorized : PaymentStatus.Declined;
+        paymentResponse.CardNumberLastFour = request.CardNumber.Substring(request.CardNumber.Length - 4);
 
-        result.PaymentId = request.PaymentId;
-        result.ExpiryMonth = request.ExpiryMonth;
-        result.ExpiryYear = request.ExpiryYear;
-        result.Currency = request.Currency;
-        result.Amount = request.Amount;
+        paymentResponse.PaymentId = request.PaymentId;
+        paymentResponse.ExpiryMonth = request.ExpiryMonth;
+        paymentResponse.ExpiryYear = request.ExpiryYear;
+        paymentResponse.Currency = request.Currency;
+        paymentResponse.Amount = request.Amount;
 
         // todo double check log format. no paymentId
         this.logger.LogInformation(
             "ParseBankResponse.Completed, Authorized={Authorized}, AuthorizationCode={AuthorizationCode}",
             bankResponse.Authorized, bankResponse.AuthorizationCode);
 
-        return result;
+        return paymentResponse;
     }
 }
