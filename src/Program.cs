@@ -31,12 +31,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection();
-// app.UseAuthorization();
-
 app.UseMiddleware<ErrorMiddleware>();
 app.UseMiddleware<LogMiddleware>();
 
 app.MapControllers();
-
 app.Run();

@@ -58,7 +58,6 @@ public class PostPaymentRepository : IPostPaymentRepository
     }
 
     // todo same as above
-    //
     public async Task<PostPaymentResponse?> Get(string paymentId)
     {
         var config = new AmazonDynamoDBConfig

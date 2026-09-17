@@ -37,7 +37,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsExpiryValid(PaymentRequest payment, DateTime now)
     {
-        // probably not needed, date should be already valid
+        // most probably not needed, date should be already valid
         if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
         {
             this.logger.LogInformation(
