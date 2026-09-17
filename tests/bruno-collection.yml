@@ -57,6 +57,7 @@ items:
           value: bruno-client
         - name: CorrelationId
           value: '12345'
+          disabled: true
       body:
         type: json
         data: |-
@@ -91,6 +92,7 @@ items:
           value: bruno-client
         - name: CorrelationId
           value: '12345'
+          disabled: true
       body:
         type: json
         data: |-
@@ -116,6 +118,11 @@ items:
     http:
       method: POST
       url: http://localhost:8080/payments
+      headers:
+        - name: Content-Type
+          value: application/json
+        - name: Accept
+          value: '*'
       body:
         type: json
         data: |-
@@ -139,5 +146,5 @@ extensions:
     ignore:
       - node_modules
       - .git
-    exportedAt: '2026-09-16T10:34:35.191Z'
+    exportedAt: '2026-09-17T13:29:11.426Z'
     exportedUsing: Bruno
