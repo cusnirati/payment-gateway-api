@@ -28,7 +28,6 @@ public class PostPaymentRepository : IPostPaymentRepository
 
     public async Task Add(PostPaymentResponse payment)
     {
-        // todo extract config parsing
         var config = new AmazonDynamoDBConfig
         {
             ServiceURL = "http://localhost:8000",
@@ -48,13 +47,11 @@ public class PostPaymentRepository : IPostPaymentRepository
         if (response.HttpStatusCode != HttpStatusCode.OK)
         {
             this.logger.LogError(
-                "paymentId={PaymentId}, StatusCode={StatusCode}, ContentLength={ContentLength}, OperationStatus={OperationStatus}",
+                "Add.Payments.Failed, PaymentId={PaymentId}, StatusCode={StatusCode}, ContentLength={ContentLength}, OperationStatus={OperationStatus}",
                 payment.PaymentId, response.HttpStatusCode, response.ContentLength, "Failed");
 
             throw new InternalServerErrorException();
         }
-
-        this.logger.LogInformation("added ok, Id={Id}", payment.PaymentId);
     }
 
     // todo same as above
@@ -78,7 +75,6 @@ public class PostPaymentRepository : IPostPaymentRepository
 
         if (response.HttpStatusCode != HttpStatusCode.OK)
         {
-            // todo log error
             throw new Exception();
         }
 
@@ -92,10 +88,7 @@ public class PostPaymentRepository : IPostPaymentRepository
         }
         else
         {
-            // todo
-            this.logger.LogWarning(
-                "paymentId={PaymentId}, OperationStatus={OperationStatus}",
-                paymentId, "NotFound");
+            this.logger.LogWarning("Get.Payments.Failed, PaymentId={PaymentId}, Status={Status}", paymentId, "NotFound");
 
             return null;
         }

@@ -36,14 +36,13 @@ public class BankService : IBankService
         if (bankResponse.IsSuccessStatusCode)
         {
             PostPaymentResponse paymentResponse = await this.responseProcessor.ParseBankResponse(payment, bankResponse);
-            await this.paymentRepo.Add(paymentResponse); // or more complex logic for status != PaymentStatus.Authorized
+            await this.paymentRepo.Add(paymentResponse);
 
             return paymentResponse.Status;
         }
         else
         {
-            // todo double check format, no paymentId
-            this.logger.LogError("ExecuteBankPayment.Failed, Status={Status}", "Failed");
+            this.logger.LogError("ExecuteBankPayment.Failed, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Failed");
             return PaymentStatus.InternalError;
         }
     }

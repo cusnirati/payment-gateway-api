@@ -53,8 +53,9 @@ public class BankHttpClient : IBankHttpClient
         client.BaseAddress = new Uri(bankEndpoint);
         HttpResponseMessage response = await client.PostAsJsonAsync($"/payments", request);
 
-        // todo double check log format. no paymentId
-        this.logger.LogInformation("PostBankPayment.Completed, HttpStatusCode={HttpStatusCode}", (int)response.StatusCode);
+        this.logger.LogInformation(
+            "PostBankPayment.Completed, PaymentId={PaymentId}, HttpStatusCode={HttpStatusCode}",
+            payment.PaymentId, (int)response.StatusCode);
 
         return response;
     }

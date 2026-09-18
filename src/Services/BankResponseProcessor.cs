@@ -29,7 +29,7 @@ public class BankResponseProcessor : IBankResponseProcessor
 
         if (bankResponse is null)
         {
-            this.logger.LogError("ParseBankResponse.NullBankResponse, Status={Status}", "Failed");
+            this.logger.LogError("ParseBankResponse.NullBankResponse, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
 
             payResponse.Status = PaymentStatus.InternalError;
             return payResponse;
@@ -44,10 +44,9 @@ public class BankResponseProcessor : IBankResponseProcessor
         payResponse.Currency = request.Currency;
         payResponse.Amount = request.Amount;
 
-        // todo double check log format. no paymentId
         this.logger.LogInformation(
-            "ParseBankResponse.Completed, Authorized={Authorized}, AuthorizationCode={AuthorizationCode}",
-            bankResponse.Authorized, bankResponse.AuthorizationCode);
+            "ParseBankResponse.Completed, PaymentId={PaymentId}, Authorized={Authorized}, AuthorizationCode={AuthorizationCode}",
+            request.PaymentId, bankResponse.Authorized, bankResponse.AuthorizationCode);
 
         return payResponse;
     }
