@@ -75,6 +75,10 @@ public class PostPaymentRepository : IPostPaymentRepository
 
         if (response.HttpStatusCode != HttpStatusCode.OK)
         {
+            this.logger.LogError(
+                "Get.Payments.Failed, PaymentId={PaymentId}, StatusCode={StatusCode}",
+                paymentId, response.HttpStatusCode);
+
             throw new Exception();
         }
 

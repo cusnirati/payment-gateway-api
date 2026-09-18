@@ -80,7 +80,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         if (payment.Currency.Length != 3)
         {
             this.logger.LogInformation(
-                "Validator.IsAmountValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
+                "Validator.IsCurrencyCodeValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
                 payment.PaymentId, false, "Invalid currency");
 
             return false;
@@ -95,7 +95,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         if (!Regex.IsMatch(payment.Cvv, @"^\d{3,4}$"))
         {
             this.logger.LogInformation(
-                "Validator.IsAmountValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
+                "Validator.ValidateCvv, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
                 payment.PaymentId, false, "Invalid CVV");
 
             return false;
