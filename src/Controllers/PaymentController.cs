@@ -67,7 +67,7 @@ public class PaymentController : Controller
             this.validator.IsExpiryValid(payment, DateTime.Now) &&
             this.validator.IsAmountValid(payment) &&
             this.validator.IsCurrencyCodeValid(payment) &&
-            this.validator.ValidateCvv(payment);
+            this.validator.IsCvvValid(payment);
 
         if (!isValid)
         {

@@ -8,10 +8,10 @@ namespace PaymentGatewayApi.Services;
 public interface IPaymentRequestValidator
 {
     bool IsCardNumberValid(PaymentRequest payment);
+    bool IsExpiryValid(PaymentRequest payment, DateTime now);
     bool IsAmountValid(PaymentRequest payment);
     bool IsCurrencyCodeValid(PaymentRequest payment);
-    bool ValidateCvv(PaymentRequest payment);
-    bool IsExpiryValid(PaymentRequest payment, DateTime now);
+    bool IsCvvValid(PaymentRequest payment);
 }
 
 // todo add logs for invalid
@@ -76,11 +76,11 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsCurrencyCodeValid(PaymentRequest payment)
     {
-        // should be a list of accepted currencies, via database or config
+        // should be a list of accepted currencies, via database, config
         if (payment.Currency.Length != 3)
         {
             this.logger.LogInformation(
-                "Validator.IsAmountValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
+                "Validator.IsCurrencyCodeValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
                 payment.PaymentId, false, "Invalid currency");
 
             return false;
@@ -89,13 +89,13 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         return true;
     }
 
-    public bool ValidateCvv(PaymentRequest payment)
+    public bool IsCvvValid(PaymentRequest payment)
     {
         // 3 or 4 digits
         if (!Regex.IsMatch(payment.Cvv, @"^\d{3,4}$"))
         {
             this.logger.LogInformation(
-                "Validator.IsAmountValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
+                "Validator.IsCvvValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
                 payment.PaymentId, false, "Invalid CVV");
 
             return false;
