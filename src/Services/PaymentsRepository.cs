@@ -28,6 +28,7 @@ public class PostPaymentRepository : IPostPaymentRepository
 
     public async Task Add(PostPaymentResponse payment)
     {
+        // todo no hardcode
         var config = new AmazonDynamoDBConfig
         {
             ServiceURL = "http://localhost:8000",
@@ -42,21 +43,13 @@ public class PostPaymentRepository : IPostPaymentRepository
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
         };
 
-        // todo add try catch
-        PutItemResponse response = await client.PutItemAsync("Payments", item);
-        if (response.HttpStatusCode != HttpStatusCode.OK)
-        {
-            this.logger.LogError(
-                "Add.Payments.Failed, PaymentId={PaymentId}, StatusCode={StatusCode}, ContentLength={ContentLength}, OperationStatus={OperationStatus}",
-                payment.PaymentId, response.HttpStatusCode, response.ContentLength, "Failed");
 
-            throw new InternalServerErrorException();
-        }
+        PutItemResponse response = await client.PutItemAsync("Payments", item);
     }
 
-    // todo same as above
     public async Task<PostPaymentResponse?> Get(string paymentId)
     {
+        // todo no hardcode
         var config = new AmazonDynamoDBConfig
         {
             ServiceURL = "http://localhost:8000",
@@ -69,18 +62,8 @@ public class PostPaymentRepository : IPostPaymentRepository
         {
             ["PaymentId"] = new AttributeValue { S = paymentId }
         };
-
-        var request = new GetItemRequest { Key = key, TableName = "Payments" };
-        GetItemResponse? response = await client.GetItemAsync(request);
-
-        if (response.HttpStatusCode != HttpStatusCode.OK)
-        {
-            this.logger.LogError(
-               "Get.Payments.Failed, PaymentId={PaymentId}, StatusCode={StatusCode}",
-               paymentId, response.HttpStatusCode);
-
-            return null;
-        }
+        GetItemRequest request = new() { Key = key, TableName = "Payments" };
+        GetItemResponse response = await client.GetItemAsync(request);
 
         PostPaymentResponse? payment;
         if (response.Item != null && response.Item.Any())
