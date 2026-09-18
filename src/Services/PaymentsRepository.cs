@@ -35,7 +35,6 @@ public class PostPaymentRepository : IPostPaymentRepository
             Timeout = TimeSpan.FromSeconds(10),
             MaxErrorRetry = 0
         };
-        var client = new AmazonDynamoDBClient(config);
 
         var item = new Dictionary<string, AttributeValue>
         {
@@ -43,8 +42,9 @@ public class PostPaymentRepository : IPostPaymentRepository
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
         };
 
-
+        var client = new AmazonDynamoDBClient(config);
         PutItemResponse response = await client.PutItemAsync("Payments", item);
+        // todo log response statusCode
     }
 
     public async Task<PostPaymentResponse?> Get(string paymentId)
@@ -75,7 +75,7 @@ public class PostPaymentRepository : IPostPaymentRepository
         }
         else
         {
-            this.logger.LogWarning("Get.Payments.Failed, PaymentId={PaymentId}, Status={Status}", paymentId, "NotFound");
+            this.logger.LogWarning("GetPayemnt, PaymentId={PaymentId}, Status={Status}", paymentId, "NotFound");
 
             return null;
         }

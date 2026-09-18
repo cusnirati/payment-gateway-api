@@ -36,7 +36,7 @@ public class PaymentController : Controller
     [HttpGet()]
     public async Task<ActionResult<string>> GetHealthcheck()
     {
-        this.logger.LogInformation("GetHealthcheck.Received");
+        this.logger.LogInformation("GetHealthcheck, Status={Status}", "Started");
 
         return new OkObjectResult("ok");
     }
@@ -45,7 +45,7 @@ public class PaymentController : Controller
     [HttpGet("{paymentId}")]
     public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId)
     {
-        this.logger.LogInformation("GetPayment.Received, PaymentId={PaymentId}", paymentId);
+        this.logger.LogInformation("GetPayment, PaymentId={PaymentId}, Status={Status}", paymentId, "Started");
 
         var payment = await this.paymentRepo.Get(paymentId);
         if (payment is null)
@@ -60,7 +60,7 @@ public class PaymentController : Controller
     public async Task<ActionResult<PaymentStatus>> PostPayment([FromBody] PaymentRequest payment)
     {
         payment.PaymentId = Guid.NewGuid().ToString();
-        this.logger.LogInformation("PostPayment.Received, PaymentId={PaymentId}", payment.PaymentId);
+        this.logger.LogInformation("PostPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Started");
 
         bool isValid =
             this.validator.IsCardNumberValid(payment) &&

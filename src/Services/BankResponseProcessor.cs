@@ -45,8 +45,8 @@ public class BankResponseProcessor : IBankResponseProcessor
         payResponse.Amount = request.Amount;
 
         this.logger.LogInformation(
-            "ParseBankResponse.Completed, PaymentId={PaymentId}, Authorized={Authorized}, AuthorizationCode={AuthorizationCode}",
-            request.PaymentId, bankResponse.Authorized, bankResponse.AuthorizationCode);
+            "ParseBankResponse.Completed, PaymentId={PaymentId}, Authorized={Authorized}",
+            request.PaymentId, bankResponse.Authorized);
 
         return payResponse;
     }

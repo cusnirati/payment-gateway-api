@@ -24,10 +24,10 @@ public class ErrorMiddleware
         }
         catch (Exception exception)
         {
-            this.logger.LogCritical(
+            this.logger.LogError(
                 exception,
-                "Operation {Operation} {Status}. StatusCode={StatusCode} Message={Message}",
-                "Unhandled exception", "Failed", 500, exception.Message);
+                "Unhandled exception, Status={Status}",
+                "Failed");
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             await context.Response.WriteAsync($"Unhandled exception\n{exception.Message}\n");
