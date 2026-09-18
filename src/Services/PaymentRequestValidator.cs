@@ -28,7 +28,9 @@ public class PaymentRequestValidator : IPaymentRequestValidator
     {
         if (!Regex.IsMatch(payment.CardNumber, @"^\d{14,19}$"))
         {
-            this.logger.LogInformation("Validator.IsCardNumberValid, PaymentId={PaymentId}, IsValid={IsValid}", payment.PaymentId, false);
+            this.logger.LogInformation(
+                "Validator.IsCardNumberValid, PaymentId={PaymentId}, IsValid={IsValid}",
+                payment.PaymentId, false);
             return false;
         }
 
@@ -37,22 +39,12 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsExpiryValid(PaymentRequest payment, DateTime now)
     {
-        // most probably not needed, date should be already valid
-        if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
-        {
-            this.logger.LogInformation(
-                "Validator.IsExpiryValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
-                payment.PaymentId, false, "Month out of range");
-
-            return false;
-        }
-
         var expiry = new DateTime(payment.ExpiryYear, payment.ExpiryMonth, 1);
         if (expiry < new DateTime(now.Year, now.Month, 1))
         {
             this.logger.LogInformation(
-                "Validator.IsExpiryValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
-                payment.PaymentId, false, "Card expired");
+                "Validator.IsExpiryValid, PaymentId={PaymentId}, IsValid={IsValid}",
+                payment.PaymentId, false);
 
             return false;
         }
@@ -65,8 +57,8 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         if (payment.Amount < 1)
         {
             this.logger.LogInformation(
-                "Validator.IsAmountValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
-                payment.PaymentId, false, "Invalid amount");
+                "Validator.IsAmountValid, PaymentId={PaymentId}, IsValid={IsValid}",
+                payment.PaymentId, false);
 
             return false;
         }
@@ -80,8 +72,8 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         if (payment.Currency.Length != 3)
         {
             this.logger.LogInformation(
-                "Validator.IsCurrencyCodeValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
-                payment.PaymentId, false, "Invalid currency");
+                "Validator.IsCurrencyCodeValid, PaymentId={PaymentId}, IsValid={IsValid}",
+                payment.PaymentId, false);
 
             return false;
         }
@@ -95,8 +87,8 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         if (!Regex.IsMatch(payment.Cvv, @"^\d{3,4}$"))
         {
             this.logger.LogInformation(
-                "Validator.IsCvvValid, PaymentId={PaymentId}, IsValid={IsValid}, Reason={Reason}",
-                payment.PaymentId, false, "Invalid CVV");
+                "Validator.IsCvvValid, PaymentId={PaymentId}, IsValid={IsValid}",
+                payment.PaymentId, false);
 
             return false;
         }

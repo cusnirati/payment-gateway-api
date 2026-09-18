@@ -23,13 +23,13 @@ public class BankResponseProcessor : IBankResponseProcessor
 
     public async Task<PostPaymentResponse> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
     {
-        // todo try catch
+        // todo try catch?
         BankResponse? bankResponse = await response.Content.ReadFromJsonAsync<BankResponse>();
         PostPaymentResponse payResponse = new();
 
         if (bankResponse is null)
         {
-            this.logger.LogError("ParseBankResponse.NullBankResponse, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
+            this.logger.LogError("ParseBankResponse null response, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
 
             payResponse.Status = PaymentStatus.InternalError;
             return payResponse;
@@ -45,8 +45,8 @@ public class BankResponseProcessor : IBankResponseProcessor
         payResponse.Amount = request.Amount;
 
         this.logger.LogInformation(
-            "ParseBankResponse.Completed, PaymentId={PaymentId}, Authorized={Authorized}",
-            request.PaymentId, bankResponse.Authorized);
+            "ParseBankResponse, PaymentId={PaymentId}, Status={Status}, Authorized={Authorized}",
+            request.PaymentId, "Completed", bankResponse.Authorized);
 
         return payResponse;
     }

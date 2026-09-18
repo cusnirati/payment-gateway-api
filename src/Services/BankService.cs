@@ -30,7 +30,7 @@ public class BankService : IBankService
 
     public async Task<PaymentStatus> ExecutePayment(PaymentRequest payment)
     {
-        this.logger.LogInformation("ExecuteBankPayment.Received, PaymentId={PaymentId}", payment.PaymentId);
+        this.logger.LogInformation("ExecuteBankPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Started");
 
         HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(payment);
         if (bankResponse.IsSuccessStatusCode)
@@ -42,7 +42,7 @@ public class BankService : IBankService
         }
         else
         {
-            this.logger.LogError("ExecuteBankPayment.Failed, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Failed");
+            this.logger.LogError("ExecuteBankPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Failed");
             return PaymentStatus.InternalError;
         }
     }
