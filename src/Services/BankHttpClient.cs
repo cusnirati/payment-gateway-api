@@ -14,6 +14,23 @@ public interface IBankHttpClient
     Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment);
 }
 
+// https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0#header-propagation-middleware
+
+// // code duplication due to https://github.com/dotnet/aspnetcore/issues/48581
+// builder.Services.AddHeaderPropagation(options => options.Headers.Add("CorrelationId"));
+
+// builder.Services.AddHttpClient("FxRepository", client =>
+// {
+//     client.DefaultRequestHeaders.Add("CallerId", "FxReporter");
+
+//     string uri = builder.Configuration.GetValue<string>("FxRepository.url");
+//     client.BaseAddress = new Uri(uri);
+// })
+// .AddHeaderPropagation(options => options.Headers.Add("CorrelationId"))
+// .AddPollyRetries(log);
+
+// app.UseHeaderPropagation();
+
 public class BankHttpClient : IBankHttpClient
 {
     private readonly ILogger<BankHttpClient> logger;
