@@ -8,6 +8,7 @@ using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace PaymentGatewayApi.Services;
 
@@ -17,32 +18,60 @@ public interface IPostPaymentRepository
     Task<PostPaymentResponse?> Get(string paymentId);
 }
 
-public class PostPaymentRepository : IPostPaymentRepository
+public class Temp
 {
-    private readonly ILogger<PostPaymentRepository> logger;
+    private readonly ILogger<Temp> logger;
 
-    public PostPaymentRepository(ILogger<PostPaymentRepository> logger)
+    private readonly IConfiguration config;
+
+    public Temp(ILogger<Temp> logger, IConfiguration config)
     {
         this.logger = logger;
+        this.config = config;
     }
 
-    public async Task Add(PostPaymentResponse payment)
+    public AmazonDynamoDBClient Foo()
     {
-        // todo no hardcode
+        var url = this.config["AwsDynamo"];
         var config = new AmazonDynamoDBConfig
         {
-            ServiceURL = "http://localhost:8000",
+            ServiceURL = url,
             Timeout = TimeSpan.FromSeconds(10),
             MaxErrorRetry = 0
         };
 
+        var client = new AmazonDynamoDBClient(config);
+        return client;
+    }
+}
+
+public class PostPaymentRepository : IPostPaymentRepository
+{
+    private readonly ILogger<PostPaymentRepository> logger;
+    private readonly IConfiguration config;
+
+    public PostPaymentRepository(ILogger<PostPaymentRepository> logger, IConfiguration config)
+    {
+        this.logger = logger;
+        this.config = config;
+    }
+
+    public async Task Add(PostPaymentResponse payment)
+    {
+        var url = this.config["AwsDynamo"];
+        var config = new AmazonDynamoDBConfig
+        {
+            ServiceURL = url,
+            Timeout = TimeSpan.FromSeconds(10),
+            MaxErrorRetry = 0
+        };
+
+        var client = new AmazonDynamoDBClient(config);
         var item = new Dictionary<string, AttributeValue>
         {
             ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
         };
-
-        var client = new AmazonDynamoDBClient(config);
         PutItemResponse response = await client.PutItemAsync("Payments", item);
         // todo log response statusCode
     }
