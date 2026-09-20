@@ -20,6 +20,9 @@ items:
     http:
       method: GET
       url: http://localhost:5067/api/payment/abcbc011-c8d9-484b-a67a-28fbda7461f3
+      headers:
+        - name: CallerId
+          value: bruno-client
       auth: inherit
     settings:
       encodeUrl: true
@@ -34,6 +37,9 @@ items:
     http:
       method: GET
       url: http://localhost:5067/api/payment
+      headers:
+        - name: Callerid
+          value: bruno-client
       auth: inherit
     settings:
       encodeUrl: true
@@ -112,35 +118,6 @@ items:
       maxRedirects: 5
       forwardAuthorizationHeader: true
   - info:
-      name: post simulator payment
-      type: http
-      seq: 6
-    http:
-      method: POST
-      url: http://localhost:8080/payments
-      headers:
-        - name: Content-Type
-          value: application/json
-        - name: Accept
-          value: '*'
-      body:
-        type: json
-        data: |-
-          {
-            "card_number": "2222405343248873",
-            "expiry_date": "04/2025",
-            "currency": "GBP",
-            "amount": 100,
-            "cvv": "123"
-          }
-      auth: inherit
-    settings:
-      encodeUrl: true
-      timeout: 0
-      followRedirects: true
-      maxRedirects: 5
-      forwardAuthorizationHeader: true
-  - info:
       name: post payment error 500
       type: http
       seq: 5
@@ -175,11 +152,40 @@ items:
       followRedirects: true
       maxRedirects: 5
       forwardAuthorizationHeader: true
+  - info:
+      name: post simulator payment
+      type: http
+      seq: 6
+    http:
+      method: POST
+      url: http://localhost:8080/payments
+      headers:
+        - name: Content-Type
+          value: application/json
+        - name: Accept
+          value: '*'
+      body:
+        type: json
+        data: |-
+          {
+            "card_number": "2222405343248873",
+            "expiry_date": "04/2025",
+            "currency": "GBP",
+            "amount": 100,
+            "cvv": "123"
+          }
+      auth: inherit
+    settings:
+      encodeUrl: true
+      timeout: 0
+      followRedirects: true
+      maxRedirects: 5
+      forwardAuthorizationHeader: true
 bundled: true
 extensions:
   bruno:
     ignore:
       - node_modules
       - .git
-    exportedAt: '2026-09-17T16:12:41.103Z'
+    exportedAt: '2026-09-19T18:47:22.780Z'
     exportedUsing: Bruno
