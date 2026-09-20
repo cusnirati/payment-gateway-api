@@ -14,6 +14,7 @@ builder.Host.UseSerilog(log);
 
 builder.Services.AddControllers();
 
+builder.Services.AddSingleton<IAwsDynamoFactory, AwsDynamoFactory>();
 builder.Services.AddSingleton<IPostPaymentRepository, PostPaymentRepository>();
 
 builder.Services.AddScoped<IPaymentRequestValidator, PaymentRequestValidator>();
@@ -25,11 +26,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseMiddleware<LogMiddleware>();
 app.UseMiddleware<ErrorMiddleware>();

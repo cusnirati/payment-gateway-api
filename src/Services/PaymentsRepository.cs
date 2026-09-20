@@ -22,9 +22,9 @@ public class PostPaymentRepository : IPostPaymentRepository
 {
     private readonly ILogger<PostPaymentRepository> logger;
     private readonly IConfiguration config;
-    private readonly AwsDynamoFactory factory;
+    private readonly IAwsDynamoFactory factory;
 
-    public PostPaymentRepository(ILogger<PostPaymentRepository> logger, IConfiguration config, AwsDynamoFactory factory)
+    public PostPaymentRepository(ILogger<PostPaymentRepository> logger, IConfiguration config, IAwsDynamoFactory factory)
     {
         this.logger = logger;
         this.config = config;

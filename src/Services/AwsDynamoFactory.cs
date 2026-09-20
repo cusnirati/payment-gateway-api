@@ -15,11 +15,13 @@ public class AwsDynamoFactory : IAwsDynamoFactory
 {
     private readonly ILogger<AwsDynamoFactory> logger;
     private readonly IConfiguration config;
+    private readonly AmazonDynamoDBClient client;
 
-    public AwsDynamoFactory(ILogger<AwsDynamoFactory> logger, IConfiguration config)
+    public AwsDynamoFactory(ILogger<AwsDynamoFactory> logger, IConfiguration config, AmazonDynamoDBClient client)
     {
         this.logger = logger;
         this.config = config;
+        this.client = client;
     }
 
     public AmazonDynamoDBClient GetClient()
