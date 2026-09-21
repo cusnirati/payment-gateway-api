@@ -1,3 +1,6 @@
+using System;
+using Amazon.DynamoDBv2;
+using Amazon.Extensions.NETCore.Setup;
 using PaymentGatewayApi.Middleware;
 using PaymentGatewayApi.Services;
 using Microsoft.AspNetCore.Builder;
@@ -17,7 +20,11 @@ builder.Services.AddControllers();
 // using simple httpClient for dev purpose, ideally a separate, fine tuned library
 builder.Services.AddHttpClient();
 
-builder.Services.AddSingleton<IAwsDynamoFactory, AwsDynamoFactory>();
+var awsOptions = builder.Configuration.GetAWSOptions();
+awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
+builder.Services.AddDefaultAWSOptions(awsOptions);
+builder.Services.AddAWSService<IAmazonDynamoDB>();
+
 builder.Services.AddSingleton<IPostPaymentRepository, PostPaymentRepository>();
 
 builder.Services.AddScoped<IPaymentRequestValidator, PaymentRequestValidator>();
