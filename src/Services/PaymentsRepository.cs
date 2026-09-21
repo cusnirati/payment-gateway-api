@@ -8,7 +8,6 @@ using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 
 namespace PaymentGatewayApi.Services;
 
@@ -21,38 +20,34 @@ public interface IPostPaymentRepository
 public class PostPaymentRepository : IPostPaymentRepository
 {
     private readonly ILogger<PostPaymentRepository> logger;
-    private readonly IConfiguration config;
-    private readonly IAwsDynamoFactory factory;
+    private readonly IAmazonDynamoDB dynamo;
 
-    public PostPaymentRepository(ILogger<PostPaymentRepository> logger, IConfiguration config, IAwsDynamoFactory factory)
+    public PostPaymentRepository(ILogger<PostPaymentRepository> logger, IAmazonDynamoDB dynamo)
     {
         this.logger = logger;
-        this.config = config;
-        this.factory = factory;
+        this.dynamo = dynamo;
     }
 
     public async Task Add(PostPaymentResponse payment)
     {
-        AmazonDynamoDBClient client = this.factory.GetClient();
         var item = new Dictionary<string, AttributeValue>
         {
             ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
         };
-        PutItemResponse response = await client.PutItemAsync("Payments", item);
+        PutItemResponse response = await this.dynamo.PutItemAsync("Payments", item);
         // todo log response
     }
 
     public async Task<PostPaymentResponse?> Get(string paymentId)
     {
-        AmazonDynamoDBClient client = this.factory.GetClient();
         var key = new Dictionary<string, AttributeValue>
         {
             ["PaymentId"] = new AttributeValue { S = paymentId }
         };
 
         GetItemRequest request = new() { Key = key, TableName = "Payments" };
-        GetItemResponse response = await client.GetItemAsync(request);
+        GetItemResponse response = await this.dynamo.GetItemAsync(request);
 
         PostPaymentResponse? payment;
         if (response.Item != null && response.Item.Any())

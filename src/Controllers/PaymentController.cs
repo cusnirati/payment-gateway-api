@@ -4,8 +4,6 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Amazon.DynamoDBv2;
-using Amazon.DynamoDBv2.Model;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Services;
 using Microsoft.AspNetCore.Http;
