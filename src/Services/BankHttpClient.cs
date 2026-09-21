@@ -14,32 +14,19 @@ public interface IBankHttpClient
     Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment);
 }
 
-// https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0#header-propagation-middleware
 
-// // code duplication due to https://github.com/dotnet/aspnetcore/issues/48581
-// builder.Services.AddHeaderPropagation(options => options.Headers.Add("CorrelationId"));
-
-// builder.Services.AddHttpClient("FxRepository", client =>
-// {
-//     client.DefaultRequestHeaders.Add("CallerId", "FxReporter");
-
-//     string uri = builder.Configuration.GetValue<string>("FxRepository.url");
-//     client.BaseAddress = new Uri(uri);
-// })
-// .AddHeaderPropagation(options => options.Headers.Add("CorrelationId"))
-// .AddPollyRetries(log);
-
-// app.UseHeaderPropagation();
 
 public class BankHttpClient : IBankHttpClient
 {
     private readonly ILogger<BankHttpClient> logger;
     private readonly IConfiguration config;
+    private readonly IHttpClientFactory httpFactory;
 
-    public BankHttpClient(ILogger<BankHttpClient> logger, IConfiguration config)
+    public BankHttpClient(ILogger<BankHttpClient> logger, IConfiguration config, IHttpClientFactory httpFactory)
     {
         this.logger = logger;
         this.config = config;
+        this.httpFactory = httpFactory;
     }
 
     public async Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment)
@@ -66,13 +53,20 @@ public class BankHttpClient : IBankHttpClient
         // todo exception catch
         // see if using needed
 
-        using HttpClient client = new();
-        client.BaseAddress = new Uri(bankEndpoint);
-        HttpResponseMessage response = await client.PostAsJsonAsync($"/payments", request);
+        // using HttpClient client = new();
+        // client.BaseAddress = new Uri(bankEndpoint);
+
+
+        HttpClient client = this.httpFactory.CreateClient();
+        string uri = $"{bankEndpoint}/payments";
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(uri, request);
 
         this.logger.LogInformation(
             "PostBankPayment, PaymentId={PaymentId}, StatusCode={StatusCode}",
             payment.PaymentId, (int)response.StatusCode);
+
+        // todo check statusCode
 
         return response;
     }

@@ -13,6 +13,7 @@ var log = new LoggerConfiguration().ReadFrom.Configuration(config).CreateLogger(
 builder.Host.UseSerilog(log);
 
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<IAwsDynamoFactory, AwsDynamoFactory>();
 builder.Services.AddSingleton<IPostPaymentRepository, PostPaymentRepository>();
@@ -34,3 +35,16 @@ app.UseMiddleware<ErrorMiddleware>();
 
 app.MapControllers();
 app.Run();
+
+
+// https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0#header-propagation-middleware
+// https://github.com/dotnet/aspnetcore/issues/48581
+// {
+//     client.DefaultRequestHeaders.Add("CallerId", "FxReporter");
+
+//     string uri = builder.Configuration.GetValue<string>("FxRepository.url");
+//     client.BaseAddress = new Uri(uri);
+// })
+// .AddHeaderPropagation(options => options.Headers.Add("CorrelationId"))
+// .AddPollyRetries(log);
+// app.UseHeaderPropagation();
