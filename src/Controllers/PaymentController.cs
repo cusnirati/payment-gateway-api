@@ -14,15 +14,15 @@ namespace PaymentGatewayApi.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class PaymentController : Controller
+public class PaymentController : ControllerBase
 {
     private readonly ILogger<PaymentController> logger;
-    private readonly IPostPaymentRepository paymentRepo;
+    private readonly IPaymentsRepository paymentRepo;
     private readonly IPaymentRequestValidator validator;
     private readonly IBankService bankService;
 
     public PaymentController(
-        ILogger<PaymentController> logger, IPostPaymentRepository paymentRepo, IPaymentRequestValidator validator, IBankService bankService)
+        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IPaymentRequestValidator validator, IBankService bankService)
     {
         this.logger = logger;
         this.paymentRepo = paymentRepo;
@@ -32,7 +32,7 @@ public class PaymentController : Controller
 
     // curl -k http://localhost:5067/api/payment
     [HttpGet()]
-    public async Task<ActionResult<string>> GetHealthcheck()
+    public ActionResult<string> GetHealthcheck()
     {
         this.logger.LogInformation("GetHealthcheck, Status={Status}", "Started");
 

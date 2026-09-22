@@ -11,18 +11,18 @@ using Microsoft.Extensions.Logging;
 
 namespace PaymentGatewayApi.Services;
 
-public interface IPostPaymentRepository
+public interface IPaymentsRepository
 {
     Task Add(PostPaymentResponse payment);
     Task<PostPaymentResponse?> Get(string paymentId);
 }
 
-public class PostPaymentRepository : IPostPaymentRepository
+public class PaymentsRepository : IPaymentsRepository
 {
-    private readonly ILogger<PostPaymentRepository> logger;
+    private readonly ILogger<PaymentsRepository> logger;
     private readonly IAmazonDynamoDB dynamo;
 
-    public PostPaymentRepository(ILogger<PostPaymentRepository> logger, IAmazonDynamoDB dynamo)
+    public PaymentsRepository(ILogger<PaymentsRepository> logger, IAmazonDynamoDB dynamo)
     {
         this.logger = logger;
         this.dynamo = dynamo;
@@ -59,7 +59,7 @@ public class PostPaymentRepository : IPostPaymentRepository
         }
         else
         {
-            this.logger.LogInformation("GetPayemnt, PaymentId={PaymentId}, Status={Status}", paymentId, "NotFound");
+            this.logger.LogInformation("GetPayment, PaymentId={PaymentId}, Status={Status}", paymentId, "NotFound");
 
             return null;
         }

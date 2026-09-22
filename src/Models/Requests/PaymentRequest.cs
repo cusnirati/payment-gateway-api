@@ -12,7 +12,6 @@ namespace PaymentGatewayApi.Models;
 
 public class PaymentRequest
 {
-    public string? CardNumberLastFour { get; set; }
     public required string CardNumber { get; set; }
     public required string Cvv { get; set; }
     public required string Currency { get; set; }

@@ -18,14 +18,22 @@ builder.Host.UseSerilog(log);
 builder.Services.AddControllers();
 
 // using simple httpClient for dev purpose, ideally should be a separate, fine tuned library for retries, circuit breaker
+// builder.Services.AddHttpClient();
+
+builder.Services.ConfigureHttpClientDefaults(http =>
+{
+    http.AddStandardResilienceHandler();
+});
 builder.Services.AddHttpClient();
+
+
 
 var awsOptions = builder.Configuration.GetAWSOptions();
 awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
 builder.Services.AddDefaultAWSOptions(awsOptions);
 builder.Services.AddAWSService<IAmazonDynamoDB>();
 
-builder.Services.AddSingleton<IPostPaymentRepository, PostPaymentRepository>();
+builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
 
 builder.Services.AddScoped<IPaymentRequestValidator, PaymentRequestValidator>();
 builder.Services.AddScoped<IBankHttpClient, BankHttpClient>();

@@ -17,10 +17,10 @@ public class BankService : IBankService
     private readonly ILogger<BankService> logger;
     private readonly IBankHttpClient bankHttpClient;
     private readonly IBankResponseProcessor responseProcessor;
-    private readonly IPostPaymentRepository paymentRepo;
+    private readonly IPaymentsRepository paymentRepo;
 
     public BankService(
-        ILogger<BankService> logger, IBankHttpClient bankHttpClient, IBankResponseProcessor responseProcessor, IPostPaymentRepository paymentRepo)
+        ILogger<BankService> logger, IBankHttpClient bankHttpClient, IBankResponseProcessor responseProcessor, IPaymentsRepository paymentRepo)
     {
         this.logger = logger;
         this.bankHttpClient = bankHttpClient;
