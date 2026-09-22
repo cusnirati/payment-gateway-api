@@ -24,7 +24,7 @@ public class BankResponseProcessor : IBankResponseProcessor
 
     public async Task<PostPaymentResponse> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
     {
-        BankResponse bankResponse = new();
+        BankResponse? bankResponse;
         PostPaymentResponse payResponse = new();
 
         try
