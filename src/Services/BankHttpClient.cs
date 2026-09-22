@@ -44,6 +44,8 @@ public class BankHttpClient : IBankHttpClient
 
         string uri = this.config["SimulatorBankEndpoint"] ?? string.Empty;
         HttpClient client = this.httpFactory.CreateClient();
+
+        // todo try catch
         HttpResponseMessage response = await client.PostAsJsonAsync(uri, request);
 
         this.logger.LogInformation(

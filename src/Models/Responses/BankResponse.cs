@@ -11,5 +11,5 @@ public class BankResponse
     public bool Authorized { get; set; }
 
     [JsonPropertyName("authorization_code")]
-    public required string AuthorizationCode { get; set; }
+    public string? AuthorizationCode { get; set; }
 }

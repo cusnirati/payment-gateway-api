@@ -14,7 +14,6 @@ public interface IPaymentRequestValidator
     bool IsCvvValid(PaymentRequest payment);
 }
 
-// todo add logs for invalid
 public class PaymentRequestValidator : IPaymentRequestValidator
 {
     private readonly ILogger<PaymentRequestValidator> logger;
@@ -39,6 +38,16 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsExpiryValid(PaymentRequest payment, DateTime now)
     {
+        // most probably not needed, date should be already valid
+        if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
+        {
+            this.logger.LogInformation(
+                "Validator.IsExpiryMonthValid, PaymentId={PaymentId}, IsValid={IsValid}",
+                payment.PaymentId, false);
+
+            return false;
+        }
+
         var expiry = new DateTime(payment.ExpiryYear, payment.ExpiryMonth, 1);
         if (expiry < new DateTime(now.Year, now.Month, 1))
         {

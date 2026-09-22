@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace PaymentGatewayApi.Services;
 
@@ -23,9 +24,20 @@ public class BankResponseProcessor : IBankResponseProcessor
 
     public async Task<PostPaymentResponse> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
     {
-        // todo try catch?
-        BankResponse? bankResponse = await response.Content.ReadFromJsonAsync<BankResponse>();
+        BankResponse bankResponse = new();
         PostPaymentResponse payResponse = new();
+
+        try
+        {
+            bankResponse = await response.Content.ReadFromJsonAsync<BankResponse>();
+        }
+        catch (Exception exception)
+        {
+            this.logger.LogError(exception, "ParseBankResponse exception, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
+
+            payResponse.Status = PaymentStatus.InternalError;
+            return payResponse;
+        }
 
         if (bankResponse is null)
         {
