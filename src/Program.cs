@@ -17,7 +17,7 @@ builder.Host.UseSerilog(log);
 
 builder.Services.AddControllers();
 
-// using simple httpClient for dev purpose, ideally a separate, fine tuned library
+// using simple httpClient for dev purpose, ideally should be a separate, fine tuned library for retries, circuit breaker
 builder.Services.AddHttpClient();
 
 var awsOptions = builder.Configuration.GetAWSOptions();
@@ -44,7 +44,6 @@ app.UseMiddleware<ErrorMiddleware>();
 
 app.MapControllers();
 app.Run();
-
 
 // https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0#header-propagation-middleware
 // https://github.com/dotnet/aspnetcore/issues/48581
