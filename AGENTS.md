@@ -25,11 +25,23 @@ the `z-logs/` output path resolve.
 
 ### Tests
 
-**There is no unit test project.** `Microsoft.NET.Test.Sdk` is referenced from the web
-project and `GenerateProgramFile=false` is set, but no test files exist — adding tests
-means adding a new test project and registering it in `PaymentGatewayApi.slnx`.
+Unit tests live in `tests/PaymentGatewayApiUnitTests` (xUnit v3 + Moq, loggers via
+`NullLogger<T>.Instance`), with folders mirroring `src/`. `global.json` opts into the
+Microsoft.Testing.Platform `dotnet test` mode, so run them with:
 
-Verification today is manual: the Bruno collection at `tests/bruno-collection.yml` (covers
+```bash
+dotnet test --project tests/PaymentGatewayApiUnitTests
+dotnet run --project tests/PaymentGatewayApiUnitTests   # equivalent, xUnit v3 projects are executables
+```
+
+Target the test project explicitly: a bare `dotnet test` (or `--solution`) fails because the
+web project's `Microsoft.NET.Test.Sdk` reference makes it look like a VSTest project.
+
+`BankHttpClient` and `PaymentsRepository` are deliberately not unit-tested; they are only
+mocked through their interfaces. Tests commented `// NOTE: defect` pin current, known-wrong
+behaviour — update them when the defect is fixed.
+
+End-to-end verification is manual: the Bruno collection at `tests/bruno-collection.yml` (covers
 health, get-by-id, authorized/declined/500 posts, and a direct simulator post), or the
 `curl` lines written above each action in `Controllers/PaymentController.cs`.
 
