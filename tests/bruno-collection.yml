@@ -21,8 +21,6 @@ items:
       method: GET
       url: http://localhost:5067/api/payments/abcbc011-c8d9-484b-a67a-28fbda7461f3
       headers:
-        - name: CallerId
-          value: bruno-client
       auth: inherit
     settings:
       encodeUrl: true
@@ -38,8 +36,6 @@ items:
       method: GET
       url: http://localhost:5067/health/live
       headers:
-        - name: CallerId
-          value: bruno-client
       auth: inherit
     settings:
       encodeUrl: true
@@ -59,10 +55,8 @@ items:
           value: application/json
         - name: Accept
           value: '*'
-        - name: CallerId
-          value: bruno-client
-        - name: CorrelationId
-          value: '12345'
+        - name: X-Correlation-ID
+          value: bruno-12345
           disabled: true
       body:
         type: json
@@ -94,10 +88,8 @@ items:
           value: application/json
         - name: Accept
           value: '*'
-        - name: CallerId
-          value: bruno-client
-        - name: CorrelationId
-          value: '12345'
+        - name: X-Correlation-ID
+          value: bruno-12345
           disabled: true
       body:
         type: json
@@ -129,10 +121,8 @@ items:
           value: application/json
         - name: Accept
           value: '*'
-        - name: CallerId
-          value: bruno-client
-        - name: CorrelationId
-          value: '12345'
+        - name: X-Correlation-ID
+          value: bruno-12345
           disabled: true
       body:
         type: json

@@ -72,7 +72,8 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
 
         if (errors.Count > 0)
         {
-            this.LogRejected("Rejected", errors.Keys);
+            string fields = string.Join(",", errors.Keys);
+            this.LogRejected("Rejected", fields);
         }
 
         return errors;
@@ -94,5 +95,5 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
     private static partial Regex CvvPattern();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Validate, Status={Status}, Fields={Fields}")]
-    private partial void LogRejected(string status, IEnumerable<string> fields);
+    private partial void LogRejected(string status, string fields);
 }

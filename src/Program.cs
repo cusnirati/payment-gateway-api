@@ -4,82 +4,109 @@ using Amazon.DynamoDBv2;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using PaymentGatewayApi.Configuration;
 using PaymentGatewayApi.Middleware;
 using PaymentGatewayApi.Services;
 using Serilog;
+using Serilog.Formatting.Compact;
 
-var builder = WebApplication.CreateBuilder(args);
+// catches what goes wrong before the configured logger exists, e.g. an invalid setting
+Log.Logger = new LoggerConfiguration().WriteTo.Console(new RenderedCompactJsonFormatter()).CreateLogger();
 
-var config = new ConfigurationBuilder().AddJsonFile("logconfig.json").Build();
-var log = new LoggerConfiguration().ReadFrom.Configuration(config).CreateLogger();
-builder.Host.UseSerilog(log);
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
+    // sinks, levels and formats come from the "Serilog" section: JSON to the console by default,
+    // readable console plus files under z-logs/ in Development; ReadFrom.Services lets tests add a sink
+    builder.Services.AddSerilog((services, logger) => logger
+        .ReadFrom.Configuration(builder.Configuration)
+        .ReadFrom.Services(services));
+
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            // statuses read as names, and a null where the model says non-nullable is a 400, not a crash later
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            options.JsonSerializerOptions.RespectNullableAnnotations = true;
+        });
+
+    // every error body is a ProblemDetails with the request's traceId and correlationId, never an exception message
+    builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     {
-        // statuses read as names, and a null where the model says non-nullable is a 400, not a crash later
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        options.JsonSerializerOptions.RespectNullableAnnotations = true;
+        if (CorrelationIdMiddleware.Get(context.HttpContext) is { } correlationId)
+        {
+            context.ProblemDetails.Extensions["correlationId"] = correlationId;
+        }
     });
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddHealthChecks();
 
-// every error body is a ProblemDetails with the request's traceId, never an exception message
-builder.Services.AddProblemDetails();
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddHealthChecks();
+    // a missing or malformed setting fails the startup, not the first request that needs it
+    builder.Services.AddOptions<BankOptions>()
+        .BindConfiguration(BankOptions.SectionName)
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
+    builder.Services.AddOptions<PaymentOptions>()
+        .BindConfiguration(PaymentOptions.SectionName)
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
+    builder.Services.AddOptions<DynamoOptions>()
+        .BindConfiguration(DynamoOptions.SectionName)
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
 
-// a missing or malformed setting fails the startup, not the first request that needs it
-builder.Services.AddOptions<BankOptions>()
-    .BindConfiguration(BankOptions.SectionName)
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-builder.Services.AddOptions<PaymentOptions>()
-    .BindConfiguration(PaymentOptions.SectionName)
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-builder.Services.AddOptions<DynamoOptions>()
-    .BindConfiguration(DynamoOptions.SectionName)
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
+    builder.Services.AddSingleton(TimeProvider.System);
 
-builder.Services.AddSingleton(TimeProvider.System);
+    // a payment POST is not idempotent, a retry after a lost response could charge the card twice;
+    // keep the timeouts and circuit breaker (tunable under Bank:Resilience), but never retry it
+    builder.Services.AddHttpClient<IBankClient, BankClient>((services, client) =>
+            client.BaseAddress = services.GetRequiredService<IOptions<BankOptions>>().Value.BaseUrl)
+        .AddStandardResilienceHandler(builder.Configuration.GetSection("Bank:Resilience"))
+        .Configure(options => options.Retry.DisableForUnsafeHttpMethods());
 
-// a payment POST is not idempotent, a retry after a lost response could charge the card twice;
-// keep the timeouts and circuit breaker (tunable under Bank:Resilience), but never retry it
-builder.Services.AddHttpClient<IBankClient, BankClient>((services, client) =>
-        client.BaseAddress = services.GetRequiredService<IOptions<BankOptions>>().Value.BaseUrl)
-    .AddStandardResilienceHandler(builder.Configuration.GetSection("Bank:Resilience"))
-    .Configure(options => options.Retry.DisableForUnsafeHttpMethods());
+    var awsOptions = builder.Configuration.GetAWSOptions();
+    awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
+    builder.Services.AddDefaultAWSOptions(awsOptions);
+    builder.Services.AddAWSService<IAmazonDynamoDB>();
 
-var awsOptions = builder.Configuration.GetAWSOptions();
-awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
-builder.Services.AddDefaultAWSOptions(awsOptions);
-builder.Services.AddAWSService<IAmazonDynamoDB>();
+    // stateless, so shared; the payment service is scoped because it holds the typed bank client,
+    // which must not be captured by a singleton (its handler is rotated by IHttpClientFactory)
+    builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
+    builder.Services.AddSingleton<IPaymentRequestValidator, PaymentRequestValidator>();
+    builder.Services.AddScoped<IPaymentService, PaymentService>();
 
-// stateless, so shared; the payment service is scoped because it holds the typed bank client,
-// which must not be captured by a singleton (its handler is rotated by IHttpClientFactory)
-builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
-builder.Services.AddSingleton<IPaymentRequestValidator, PaymentRequestValidator>();
-builder.Services.AddScoped<IPaymentService, PaymentService>();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+    var app = builder.Build();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 
-var app = builder.Build();
-app.UseSwagger();
-app.UseSwaggerUI();
+    // the correlation id wraps everything else, so every log line of the request carries it,
+    // including the request summary and the exception handler's
+    app.UseMiddleware<CorrelationIdMiddleware>();
+    app.UseSerilogRequestLogging();
+    app.UseExceptionHandler();
+    app.UseStatusCodePages();
 
-app.UseMiddleware<LogMiddleware>();
-app.UseExceptionHandler();
-app.UseStatusCodePages();
+    app.MapHealthChecks("/health/live");
+    app.MapControllers();
 
-app.MapHealthChecks("/health/live");
-app.MapControllers();
-app.Run();
-
-// https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0#header-propagation-middleware
-// https://github.com/dotnet/aspnetcore/issues/48581
-// .AddPollyRetries(log);
-// app.UseHeaderPropagation();
+    app.Run();
+    return 0;
+}
+catch (Exception exception) when (exception is not HostAbortedException)
+{
+    // HostAbortedException is how tooling such as WebApplicationFactory stops the host on purpose
+    Log.Fatal(exception, "Startup, Status={Status}", "Failed");
+    return 1;
+}
+finally
+{
+    // the file sink buffers, flush it before the process exits
+    await Log.CloseAndFlushAsync();
+}

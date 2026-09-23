@@ -24,7 +24,6 @@ public sealed class ApiFixture : IAsyncLifetime
             BaseAddress = new Uri(baseUrl),
             Timeout = TimeSpan.FromSeconds(30)
         };
-        this.Client.DefaultRequestHeaders.Add("CallerId", "e2e-tests");
     }
 
     public async ValueTask InitializeAsync()

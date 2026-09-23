@@ -21,8 +21,8 @@ dotnet run --project src/PaymentGatewayApi.csproj    # http://localhost:5067, Sw
 docker build -f src/Dockerfile -t payment-gateway-api .   # container image, from repo root
 ```
 
-`dotnet run` sets the working directory to `src/`, which is what makes `logconfig.json` and
-the `z-logs/` output path resolve.
+`dotnet run` sets the working directory to `src/`, which is what makes the Development
+`z-logs/` output path resolve.
 
 ### Tests
 
@@ -125,7 +125,7 @@ singletons, as is the `IAmazonDynamoDB` client registered through
 resilience handler has retries disabled, and `PaymentService` is scoped so it never captures it. New services follow the existing pattern — interface
 and implementation in the same file under `Services/` — and get registered there.
 
-Middleware order is `LogMiddleware`, then `UseExceptionHandler` (with `GlobalExceptionHandler`
+Middleware order is `CorrelationIdMiddleware`, `UseSerilogRequestLogging`, then `UseExceptionHandler` (with `GlobalExceptionHandler`
 and `AddProblemDetails`), then `UseStatusCodePages` so bodiless errors get a `ProblemDetails` too.
 
 ## Bank simulator behaviour
@@ -157,12 +157,15 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
 - **Logging goes through `[LoggerMessage]`** partial methods at the bottom of each class
   (`CA1848` rejects `logger.LogX(...)` calls). Templates follow one shape:
   `"MethodName, PaymentId={PaymentId}, Status={Status}"`, with `Status` values like
-  `"Started"` / `"Completed"` / `"Failed"`. `CallerId` and `CorrelationId` are enriched
-  automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`
-  header gets a generated GUID), so never pass them by hand.
-- **Serilog is configured from `src/logconfig.json`, not `appsettings.json`.**
-  Settings bind to validated options classes in `Configuration/` (`Bank`, `Payments`, `Dynamo`),
-  checked at startup. Local-only values (the simulator URL, `AWS:ServiceURL` pointed at
-  DynamoDB Local) live in `appsettings.Development.json`; the compose file sets them for
-  the container through environment variables. Verbose file logs go to `src/z-logs/`
-  (gitignored); the console sink is deliberately terse.
+  `"Started"` / `"Completed"` / `"Failed"`. `CorrelationIdMiddleware` pushes `CorrelationId`
+  (the caller's `X-Correlation-ID` if it matches `^[A-Za-z0-9-]{1,64}$`, a new GUID otherwise,
+  echoed on the response and in every `ProblemDetails`), and Serilog adds `TraceId`/`SpanId`,
+  so never pass them by hand. Never log a `PaymentRequest`'s card number or CVV.
+- **Serilog is configured from the `Serilog` section of `appsettings*.json`.** The base file
+  writes compact JSON to the console (what containers collect); `appsettings.Development.json`
+  swaps in a readable console format and adds files under `src/z-logs/` (gitignored).
+  `UseSerilogRequestLogging` writes one summary line per request.
+- **Settings bind to validated options classes** in `Configuration/` (`Bank`, `Payments`,
+  `Dynamo`), checked at startup. Local-only values (the simulator URL, `AWS:ServiceURL`
+  pointed at DynamoDB Local) live in `appsettings.Development.json`; the compose file sets
+  them for the container through environment variables.
