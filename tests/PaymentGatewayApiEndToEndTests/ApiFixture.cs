@@ -9,7 +9,7 @@ using Xunit;
 namespace PaymentGatewayApiEndToEndTests;
 
 // shared by every test, waits for the api started by docker compose to answer its healthcheck
-public class ApiFixture : IAsyncLifetime
+public sealed class ApiFixture : IAsyncLifetime
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
 

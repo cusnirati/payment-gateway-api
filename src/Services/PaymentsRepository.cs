@@ -1,23 +1,21 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
+using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 
 public interface IPaymentsRepository
 {
     Task Add(PostPaymentResponse payment);
-    Task<PostPaymentResponse?> Get(string paymentId);
+    Task<PostPaymentResponse?> Find(string paymentId);
 }
 
-public class PaymentsRepository : IPaymentsRepository
+public partial class PaymentsRepository : IPaymentsRepository
 {
     private readonly ILogger<PaymentsRepository> logger;
     private readonly IAmazonDynamoDB dynamo;
@@ -44,14 +42,11 @@ public class PaymentsRepository : IPaymentsRepository
         {
             // the bank has already answered, so failing the request here would hide an authorized payment
             // from the merchant; log the raw item instead so it can be reconciled
-            this.logger.LogError(
-                exception,
-                "AddPayment, PaymentId={PaymentId}, Status={Status}, PaymentRaw={PaymentRaw}",
-                payment.PaymentId, "Failed", item["PaymentRaw"].S);
+            this.LogAddFailed(exception, payment.PaymentId, "Failed", item["PaymentRaw"].S);
         }
     }
 
-    public async Task<PostPaymentResponse?> Get(string paymentId)
+    public async Task<PostPaymentResponse?> Find(string paymentId)
     {
         var key = new Dictionary<string, AttributeValue>
         {
@@ -65,7 +60,7 @@ public class PaymentsRepository : IPaymentsRepository
         {
             GetItemResponse response = await this.dynamo.GetItemAsync(request);
 
-            if (response.Item != null && response.Item.Any())
+            if (response.Item is { Count: > 0 })
             {
                 string raw = response.Item["PaymentRaw"].S;
                 payment = JsonSerializer.Deserialize<PostPaymentResponse>(raw);
@@ -78,7 +73,7 @@ public class PaymentsRepository : IPaymentsRepository
         catch (Exception exception)
         {
             // rethrow so ErrorMiddleware answers 500: returning null would report an unreadable payment as not found
-            this.logger.LogError(exception, "GetPayment, PaymentId={PaymentId}, Status={Status}", paymentId, "Failed");
+            this.LogGetFailed(exception, paymentId, "Failed");
             throw;
         }
 
@@ -88,9 +83,18 @@ public class PaymentsRepository : IPaymentsRepository
         }
         else
         {
-            this.logger.LogInformation("GetPayment, PaymentId={PaymentId}, Status={Status}", paymentId, "NotFound");
+            this.LogGetNotFound(paymentId, "NotFound");
 
             return null;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "AddPayment, PaymentId={PaymentId}, Status={Status}, PaymentRaw={PaymentRaw}")]
+    private partial void LogAddFailed(Exception exception, string? paymentId, string status, string paymentRaw);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "GetPayment, PaymentId={PaymentId}, Status={Status}")]
+    private partial void LogGetFailed(Exception exception, string paymentId, string status);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "GetPayment, PaymentId={PaymentId}, Status={Status}")]
+    private partial void LogGetNotFound(string paymentId, string status);
 }

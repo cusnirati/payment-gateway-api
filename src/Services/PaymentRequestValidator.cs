@@ -1,7 +1,7 @@
 using System;
 using System.Text.RegularExpressions;
-using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
+using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 
@@ -14,7 +14,7 @@ public interface IPaymentRequestValidator
     bool IsCvvValid(PaymentRequest payment);
 }
 
-public class PaymentRequestValidator : IPaymentRequestValidator
+public partial class PaymentRequestValidator : IPaymentRequestValidator
 {
     // cards are issued with an expiry a few years out, anything further is a typo or garbage
     private const int MaxExpiryYearsAhead = 20;
@@ -30,9 +30,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
     {
         if (!Regex.IsMatch(payment.CardNumber, @"^\d{14,19}$"))
         {
-            this.logger.LogInformation(
-                "Validator.IsCardNumberValid, PaymentId={PaymentId}, IsValid={IsValid}",
-                payment.PaymentId, false);
+            this.LogRejected(payment.PaymentId, "Rejected", "IsCardNumberValid");
             return false;
         }
 
@@ -43,9 +41,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
     {
         if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
         {
-            this.logger.LogInformation(
-                "Validator.IsExpiryMonthValid, PaymentId={PaymentId}, IsValid={IsValid}",
-                payment.PaymentId, false);
+            this.LogRejected(payment.PaymentId, "Rejected", "IsExpiryMonthValid");
 
             return false;
         }
@@ -55,9 +51,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         bool isTooFarAhead = payment.ExpiryYear > now.Year + MaxExpiryYearsAhead;
         if (isExpired || isTooFarAhead)
         {
-            this.logger.LogInformation(
-                "Validator.IsExpiryValid, PaymentId={PaymentId}, IsValid={IsValid}",
-                payment.PaymentId, false);
+            this.LogRejected(payment.PaymentId, "Rejected", "IsExpiryValid");
 
             return false;
         }
@@ -69,9 +63,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
     {
         if (payment.Amount < 1)
         {
-            this.logger.LogInformation(
-                "Validator.IsAmountValid, PaymentId={PaymentId}, IsValid={IsValid}",
-                payment.PaymentId, false);
+            this.LogRejected(payment.PaymentId, "Rejected", "IsAmountValid");
 
             return false;
         }
@@ -84,9 +76,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         // should be a list of accepted currencies, via database, config
         if (payment.Currency.Length != 3)
         {
-            this.logger.LogInformation(
-                "Validator.IsCurrencyCodeValid, PaymentId={PaymentId}, IsValid={IsValid}",
-                payment.PaymentId, false);
+            this.LogRejected(payment.PaymentId, "Rejected", "IsCurrencyCodeValid");
 
             return false;
         }
@@ -99,13 +89,14 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         // 3 or 4 digits
         if (!Regex.IsMatch(payment.Cvv, @"^\d{3,4}$"))
         {
-            this.logger.LogInformation(
-                "Validator.IsCvvValid, PaymentId={PaymentId}, IsValid={IsValid}",
-                payment.PaymentId, false);
+            this.LogRejected(payment.PaymentId, "Rejected", "IsCvvValid");
 
             return false;
         }
 
         return true;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Validate, PaymentId={PaymentId}, Status={Status}, Rule={Rule}")]
+    private partial void LogRejected(string? paymentId, string status, string rule);
 }

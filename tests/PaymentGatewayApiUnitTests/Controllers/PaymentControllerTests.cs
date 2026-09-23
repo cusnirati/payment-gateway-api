@@ -48,7 +48,7 @@ public class PaymentControllerTests
     public async Task GetPayment_Found_ReturnsOkWithPayment()
     {
         PostPaymentResponse payment = new() { PaymentId = TestData.PaymentId, Status = PaymentStatus.Authorized };
-        this.paymentRepo.Setup(r => r.Get(TestData.PaymentId)).ReturnsAsync(payment);
+        this.paymentRepo.Setup(r => r.Find(TestData.PaymentId)).ReturnsAsync(payment);
 
         ActionResult<PostPaymentResponse> result = await this.controller.GetPayment(TestData.PaymentId);
 
@@ -59,7 +59,7 @@ public class PaymentControllerTests
     [Fact]
     public async Task GetPayment_Missing_ReturnsNotFound()
     {
-        this.paymentRepo.Setup(r => r.Get(It.IsAny<string>())).ReturnsAsync((PostPaymentResponse?)null);
+        this.paymentRepo.Setup(r => r.Find(It.IsAny<string>())).ReturnsAsync((PostPaymentResponse?)null);
 
         ActionResult<PostPaymentResponse> result = await this.controller.GetPayment(TestData.PaymentId);
 

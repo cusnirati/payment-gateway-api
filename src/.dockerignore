@@ -1,7 +1,0 @@
-bin/
-obj/
-z-logs/
-Simulators/
-docker-compose.yml
-Dockerfile
-.dockerignore

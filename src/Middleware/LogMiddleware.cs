@@ -23,7 +23,7 @@ public class LogMiddleware
         {
             correlationId = correlationHeader;
         }
-        else 
+        else
         {
             // or return bad request if missing correlationId
             correlationId = Guid.NewGuid().ToString();
@@ -32,7 +32,7 @@ public class LogMiddleware
         using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"]))
         using (LogContext.PushProperty("CorrelationId", correlationId))
         {
-            await next(context);
+            await this.next(context);
         }
     }
 }

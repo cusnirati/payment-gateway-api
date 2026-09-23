@@ -1,26 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <ImplicitUsings>disable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>net10.0</TargetFramework>
-        <IsTestProject>true</IsTestProject>
-        <IsPackable>false</IsPackable>
-        <!-- <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport> -->
-    </PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
 
-    <!-- <ItemGroup>
-    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup> -->
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Moq" Version="4.20.69" />
-        <PackageReference Include="xunit.v3" Version="4.0.1" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\..\src\PaymentGatewayApi.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PaymentGatewayApi.csproj" />
+  </ItemGroup>
 
 </Project>

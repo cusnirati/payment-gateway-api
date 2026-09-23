@@ -3,10 +3,9 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Serilog;
+using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 
@@ -17,7 +16,7 @@ public interface IBankHttpClient
 
 
 
-public class BankHttpClient : IBankHttpClient
+public partial class BankHttpClient : IBankHttpClient
 {
     private readonly ILogger<BankHttpClient> logger;
     private readonly IConfiguration config;
@@ -57,15 +56,19 @@ public class BankHttpClient : IBankHttpClient
         {
             // bank unreachable, timed out, or circuit open;
             // answer as the bank would when unavailable so BankService maps it to InternalError
-            this.logger.LogError(exception, "PostBankPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Failed");
+            this.LogPostFailed(exception, payment.PaymentId, "Failed");
 
             return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
         }
 
-        this.logger.LogInformation(
-            "PostBankPayment, PaymentId={PaymentId}, StatusCode={StatusCode}",
-            payment.PaymentId, (int)response.StatusCode);
+        this.LogPosted(payment.PaymentId, "Completed", (int)response.StatusCode);
 
         return response;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "PostBankPayment, PaymentId={PaymentId}, Status={Status}")]
+    private partial void LogPostFailed(Exception exception, string? paymentId, string status);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "PostBankPayment, PaymentId={PaymentId}, Status={Status}, StatusCode={StatusCode}")]
+    private partial void LogPosted(string? paymentId, string status, int statusCode);
 }

@@ -2,9 +2,8 @@ using System;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Logging;
-using System.Net;
+using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 
@@ -14,7 +13,7 @@ public interface IBankResponseProcessor
     Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response);
 }
 
-public class BankResponseProcessor : IBankResponseProcessor
+public partial class BankResponseProcessor : IBankResponseProcessor
 {
     private readonly ILogger<BankResponseProcessor> logger;
 
@@ -23,7 +22,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         this.logger = logger;
     }
 
-    public async Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
+    public async Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response)
     {
         BankResponse? bankResponse;
 
@@ -33,32 +32,36 @@ public class BankResponseProcessor : IBankResponseProcessor
         }
         catch (Exception exception)
         {
-            this.logger.LogError(exception, "ParseBankResponse exception, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
+            this.LogUnparseable(exception, payment.PaymentId, "Failed");
 
             return null;
         }
 
         if (bankResponse is null)
         {
-            this.logger.LogError("ParseBankResponse null response, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
+            this.LogUnparseable(null, payment.PaymentId, "Failed");
 
             return null;
         }
 
         PostPaymentResponse payResponse = new();
         payResponse.Status = bankResponse.Authorized ? PaymentStatus.Authorized : PaymentStatus.Declined;
-        payResponse.CardNumberLastFour = request.CardNumber.Substring(request.CardNumber.Length - 4);
+        payResponse.CardNumberLastFour = payment.CardNumber.Substring(payment.CardNumber.Length - 4);
 
-        payResponse.PaymentId = request.PaymentId;
-        payResponse.ExpiryMonth = request.ExpiryMonth;
-        payResponse.ExpiryYear = request.ExpiryYear;
-        payResponse.Currency = request.Currency;
-        payResponse.Amount = request.Amount;
+        payResponse.PaymentId = payment.PaymentId;
+        payResponse.ExpiryMonth = payment.ExpiryMonth;
+        payResponse.ExpiryYear = payment.ExpiryYear;
+        payResponse.Currency = payment.Currency;
+        payResponse.Amount = payment.Amount;
 
-        this.logger.LogInformation(
-            "ParseBankResponse, PaymentId={PaymentId}, Status={Status}, Authorized={Authorized}",
-            request.PaymentId, "Completed", bankResponse.Authorized);
+        this.LogParsed(payment.PaymentId, "Completed", bankResponse.Authorized);
 
         return payResponse;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "ParseBankResponse, PaymentId={PaymentId}, Status={Status}")]
+    private partial void LogUnparseable(Exception? exception, string? paymentId, string status);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "ParseBankResponse, PaymentId={PaymentId}, Status={Status}, Authorized={Authorized}")]
+    private partial void LogParsed(string? paymentId, string status, bool authorized);
 }

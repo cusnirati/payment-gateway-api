@@ -1,13 +1,11 @@
 using System;
 using Amazon.DynamoDBv2;
-using Amazon.Extensions.NETCore.Setup;
-using PaymentGatewayApi.Middleware;
-using PaymentGatewayApi.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
+using PaymentGatewayApi.Middleware;
+using PaymentGatewayApi.Services;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);

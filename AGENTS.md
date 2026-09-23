@@ -18,7 +18,7 @@ API container on `:5067` (don't combine it with `dotnet run`, they share the por
 ```bash
 dotnet build PaymentGatewayApi.slnx                  # from repo root
 dotnet run --project src/PaymentGatewayApi.csproj    # http://localhost:5067, Swagger at /swagger
-docker build -t payment-gateway-api src/             # container image
+docker build -f src/Dockerfile -t payment-gateway-api .   # container image, from repo root
 ```
 
 `dotnet run` sets the working directory to `src/`, which is what makes `logconfig.json` and
@@ -122,10 +122,15 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
 
 ## Conventions
 
+- **The build enforces the style.** `Directory.Build.props` turns on `latest-recommended`
+  analyzers, code-style enforcement and warnings-as-errors; `.editorconfig` holds the rules.
+  Run `dotnet format PaymentGatewayApi.slnx` before committing. Package versions live only in
+  `Directory.Packages.props` (central package management).
 - **Explicit `using` directives** — `ImplicitUsings` is disabled, so every file declares
-  its own. `Nullable` is enabled.
-- **`this.` prefix** on all field access, consistently throughout.
-- **Structured logging** follows one template shape:
+  its own, System first; unused ones fail the build (IDE0005). `Nullable` is enabled.
+- **`this.` prefix** on all field access and only there (IDE0009).
+- **Logging goes through `[LoggerMessage]`** partial methods at the bottom of each class
+  (`CA1848` rejects `logger.LogX(...)` calls). Templates follow one shape:
   `"MethodName, PaymentId={PaymentId}, Status={Status}"`, with `Status` values like
   `"Started"` / `"Completed"` / `"Failed"`. `CallerId` and `CorrelationId` are enriched
   automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`

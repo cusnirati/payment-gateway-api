@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace PaymentGatewayApi.Middleware;
 
-public class ErrorMiddleware
+public partial class ErrorMiddleware
 {
     private readonly RequestDelegate next;
     private readonly ILogger<ErrorMiddleware> logger;
@@ -20,14 +20,11 @@ public class ErrorMiddleware
     {
         try
         {
-            await next(context);
+            await this.next(context);
         }
         catch (Exception exception)
         {
-            this.logger.LogError(
-                exception,
-                "Unhandled exception, Status={Status}",
-                "Failed");
+            this.LogUnhandled(exception, "Failed");
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
@@ -37,4 +34,7 @@ public class ErrorMiddleware
             return;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception, Status={Status}")]
+    private partial void LogUnhandled(Exception exception, string status);
 }

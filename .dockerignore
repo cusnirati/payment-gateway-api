@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+.git/
+.github/
+tests/
+deploy/
+*.md
+src/z-logs/
+src/Simulators/
+src/docker-compose.yml
+src/Dockerfile

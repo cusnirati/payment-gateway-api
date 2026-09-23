@@ -1,5 +1,3 @@
-using System;
-
 namespace PaymentGatewayApi.Models;
 
 public class PostPaymentResponse

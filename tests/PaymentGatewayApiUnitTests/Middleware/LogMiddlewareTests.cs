@@ -89,7 +89,7 @@ public class LogMiddlewareTests
         Assert.Contains("merchant-1", value.ToString());
     }
 
-    private class CollectingSink : ILogEventSink
+    private sealed class CollectingSink : ILogEventSink
     {
         public List<LogEvent> Events { get; } = new();
 

@@ -1,20 +1,15 @@
 using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
-using PaymentGatewayApi.Models;
-using PaymentGatewayApi.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Services;
 
 namespace PaymentGatewayApi.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class PaymentController : ControllerBase
+public partial class PaymentController : ControllerBase
 {
     private readonly ILogger<PaymentController> logger;
     private readonly IPaymentsRepository paymentRepo;
@@ -34,7 +29,7 @@ public class PaymentController : ControllerBase
     [HttpGet()]
     public ActionResult<string> GetHealthcheck()
     {
-        this.logger.LogInformation("GetHealthcheck, Status={Status}", "Started");
+        this.LogGetHealthcheck("Started");
 
         return new OkObjectResult("ok");
     }
@@ -43,9 +38,9 @@ public class PaymentController : ControllerBase
     [HttpGet("{paymentId}")]
     public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId)
     {
-        this.logger.LogInformation("GetPayment, PaymentId={PaymentId}, Status={Status}", paymentId, "Started");
+        this.LogGetPayment(paymentId, "Started");
 
-        var payment = await this.paymentRepo.Get(paymentId);
+        var payment = await this.paymentRepo.Find(paymentId);
         if (payment is null)
         {
             return new NotFoundObjectResult("payment not found");
@@ -58,7 +53,7 @@ public class PaymentController : ControllerBase
     public async Task<ActionResult<PaymentStatus>> PostPayment([FromBody] PaymentRequest payment)
     {
         payment.PaymentId = Guid.NewGuid().ToString();
-        this.logger.LogInformation("PostPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Started");
+        this.LogPostPayment(payment.PaymentId, "Started");
 
         bool isValid =
             this.validator.IsCardNumberValid(payment) &&
@@ -82,4 +77,13 @@ public class PaymentController : ControllerBase
 
         return new BadRequestObjectResult(status.ToString());
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "GetHealthcheck, Status={Status}")]
+    private partial void LogGetHealthcheck(string status);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "GetPayment, PaymentId={PaymentId}, Status={Status}")]
+    private partial void LogGetPayment(string paymentId, string status);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "PostPayment, PaymentId={PaymentId}, Status={Status}")]
+    private partial void LogPostPayment(string? paymentId, string status);
 }
