@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # versions live in Directory.Packages.props; one grouped PR a week keeps the noise down
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      nuget:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /src
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker-compose
+    directory: /src
+    schedule:
+      interval: weekly

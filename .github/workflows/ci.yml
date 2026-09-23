@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build, format, unit + integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore PaymentGatewayApi.slnx
+
+      # analyzers and warnings-as-errors come from Directory.Build.props
+      - name: Build
+        run: dotnet build PaymentGatewayApi.slnx --no-restore --configuration Release
+
+      - name: Check formatting
+        run: dotnet format PaymentGatewayApi.slnx --no-restore --verify-no-changes
+
+      - name: Check for vulnerable packages
+        run: |
+          dotnet list PaymentGatewayApi.slnx package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then exit 1; fi
+
+      - name: Unit tests
+        run: >
+          dotnet test --project tests/PaymentGatewayApiUnitTests --no-build --configuration Release
+          --coverage --coverage-output-format cobertura --coverage-output unit.cobertura.xml
+          --coverage-settings coverage.settings.xml
+
+      # DynamoDB Local runs in a Testcontainers container, the runner's Docker is enough
+      - name: Integration tests
+        run: >
+          dotnet test --project tests/PaymentGatewayApiIntegrationTests --no-build --configuration Release
+          --coverage --coverage-output-format cobertura --coverage-output integration.cobertura.xml
+          --coverage-settings coverage.settings.xml
+
+      - name: Coverage report
+        if: ${{ !cancelled() }}
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.5.11
+        with:
+          reports: tests/**/TestResults/*.cobertura.xml
+          targetdir: coverage
+          reporttypes: MarkdownSummaryGithub;Cobertura;HtmlInline
+
+      - name: Publish coverage summary
+        if: ${{ !cancelled() }}
+        run: cat coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: coverage
+          path: coverage
+
+  end-to-end:
+    name: End-to-end tests against the compose stack
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Start DynamoDB Local, the bank simulator and the api container
+        working-directory: src
+        run: docker compose --profile api up --detach --build --wait
+
+      - name: End-to-end tests
+        run: dotnet test --project tests/PaymentGatewayApiEndToEndTests
+
+      - name: Stack logs
+        if: ${{ failure() }}
+        working-directory: src
+        run: docker compose --profile api logs

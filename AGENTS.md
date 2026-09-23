@@ -75,6 +75,22 @@ defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to ru
 the `POST` (it is not idempotent), so the bank's `503` fails fast. The suite owns its request
 record and reads responses as raw JSON (`JsonNode`), so it catches contract drift.
 
+### CI
+
+`.github/workflows/ci.yml` runs on pushes to `main` and on pull requests: restore, a Release
+build (warnings are errors), `dotnet format --verify-no-changes`, a vulnerable-package check,
+then the unit and integration tests with coverage (`coverage.settings.xml` limits it to the
+api assembly and skips generated code), merged by ReportGenerator into the job summary and a
+`coverage` artifact. A second job starts the compose stack with `--wait` and runs the E2E
+suite. To collect coverage locally:
+
+```bash
+dotnet test --project tests/PaymentGatewayApiUnitTests --coverage --coverage-output-format cobertura \
+  --coverage-output unit.cobertura.xml --coverage-settings coverage.settings.xml
+```
+
+Dependabot (`.github/dependabot.yml`) proposes NuGet, Actions and image updates weekly.
+
 For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health,
 get-by-id, authorized/declined/502 posts, and a direct simulator post), or the `curl` lines
 written above each action in `Controllers/PaymentsController.cs`.
