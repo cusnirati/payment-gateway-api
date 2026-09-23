@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/PaymentGatewayApi.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PaymentGatewayApiUnitTests/PaymentGatewayApiUnitTests.csproj" />
+  </Folder>
 </Solution>
