@@ -38,8 +38,9 @@ dotnet run --project tests/PaymentGatewayApiUnitTests   # equivalent, xUnit v3 p
 Target the test project explicitly: a bare `dotnet test` (or `--solution`) fails because the
 web project's `Microsoft.NET.Test.Sdk` reference makes it look like a VSTest project.
 
-`BankHttpClient` and `PaymentsRepository` are deliberately not unit-tested; they are only
-mocked through their interfaces. Tests commented `// NOTE: defect` pin current, known-wrong
+`BankHttpClient` and `PaymentsRepository` are deliberately not unit-tested beyond
+`BankHttpClient.ToBankRequest` (the bank contract mapping); otherwise they are only mocked
+through their interfaces. Tests commented `// NOTE: defect` pin current, known-wrong
 behaviour — update them when the defect is fixed.
 
 End-to-end tests live in `tests/PaymentGatewayApiEndToEndTests`. They are black-box: they call
@@ -53,8 +54,8 @@ dotnet test --project tests/PaymentGatewayApiEndToEndTests
 
 An assembly fixture (`ApiFixture`) polls the healthcheck for 30s before failing. The base URL
 defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to run against
-`dotnet run` instead of the container). The suite takes ~10s because the bank's `503` goes
-through the standard resilience handler's retries. String results (`"ok"`, the payment id,
+`dotnet run` instead of the container). The bank client's resilience handler never retries
+the `POST` (it is not idempotent), so the bank's `503` fails fast. String results (`"ok"`, the payment id,
 status names) come back as `text/plain`, not JSON strings.
 
 For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health,
@@ -94,7 +95,8 @@ digits are ever stored.
 
 ### Wiring
 
-All DI registration lives in `Program.cs`. Services are scoped; the repository is a
+All DI registration lives in `Program.cs`. Services are scoped, except `BankHttpClient`, a
+typed `HttpClient` (transient) whose resilience handler has retries disabled; the repository is a
 singleton, as is the `IAmazonDynamoDB` client registered through
 `AddAWSService<IAmazonDynamoDB>()`. New services follow the existing pattern — interface
 and implementation in the same file under `Services/` — and get registered there.
@@ -113,6 +115,8 @@ The WireMock mappings in `src/Simulators/wiremock/mappings/` select a response f
 | `0` | `503` | `InternalError` |
 | any missing field | `400` | `InternalError` |
 
+The three `200`/`503` stubs also require `expiry_date` in the bank's `MM/yyyy` format, so a
+malformed expiry falls through like any other unmatched request.
 Anything else hits the catch-all `default.json` (`400`). It carries `"priority": 10` so it never
 shadows the specific stubs; WireMock breaks equal-priority ties by load order.
 

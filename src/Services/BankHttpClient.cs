@@ -21,39 +21,41 @@ public class BankHttpClient : IBankHttpClient
 {
     private readonly ILogger<BankHttpClient> logger;
     private readonly IConfiguration config;
-    private readonly IHttpClientFactory httpFactory;
+    private readonly HttpClient client;
 
-    public BankHttpClient(ILogger<BankHttpClient> logger, IConfiguration config, IHttpClientFactory httpFactory)
+    public BankHttpClient(ILogger<BankHttpClient> logger, IConfiguration config, HttpClient client)
     {
         this.logger = logger;
         this.config = config;
-        this.httpFactory = httpFactory;
+        this.client = client;
     }
 
-    public async Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment)
+    public static BankRequest ToBankRequest(PaymentRequest payment)
     {
-        // "04/2025"
-        string expiry = $"{payment.ExpiryMonth}/{payment.ExpiryYear}";
-        BankRequest request = new()
+        return new BankRequest
         {
+            // the bank expects "MM/yyyy", e.g. "04/2025"
             CardNumber = payment.CardNumber,
-            ExpiryDate = expiry,
+            ExpiryDate = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}",
             Currency = payment.Currency,
             Amount = payment.Amount,
             Cvv = payment.Cvv
         };
+    }
 
+    public async Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment)
+    {
+        BankRequest request = ToBankRequest(payment);
         string uri = this.config["SimulatorBankEndpoint"] ?? string.Empty;
-        HttpClient client = this.httpFactory.CreateClient();
 
         HttpResponseMessage response;
         try
         {
-            response = await client.PostAsJsonAsync(uri, request);
+            response = await this.client.PostAsJsonAsync(uri, request);
         }
         catch (Exception exception)
         {
-            // bank unreachable, timed out, or circuit open once the resilience handler gave up;
+            // bank unreachable, timed out, or circuit open;
             // answer as the bank would when unavailable so BankService maps it to InternalError
             this.logger.LogError(exception, "PostBankPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Failed");
 

@@ -55,6 +55,18 @@ public class PaymentEndToEndTests
     }
 
     [Fact]
+    public async Task PostPayment_SingleDigitExpiryMonth_Authorized()
+    {
+        // the simulator only answers a "MM/yyyy" expiry, so a month sent as "4/..." would fall through to its 400
+        PaymentRequest payment = TestData.ValidPaymentRequest(TestData.AuthorizedCard);
+        payment.ExpiryMonth = 4;
+
+        HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task PostPayment_EvenCard_Declined()
     {
         PaymentRequest payment = TestData.ValidPaymentRequest(TestData.DeclinedCard);
@@ -67,7 +79,6 @@ public class PaymentEndToEndTests
     [Fact]
     public async Task PostPayment_CardEndingZero_InternalError()
     {
-        // slow, the resilience handler retries the simulator's 503 before giving up
         PaymentRequest payment = TestData.ValidPaymentRequest(TestData.BankUnavailableCard);
 
         HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);

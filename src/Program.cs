@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,16 +18,10 @@ builder.Host.UseSerilog(log);
 
 builder.Services.AddControllers();
 
-// using simple httpClient for dev purpose, ideally should be a separate, fine tuned library for retries, circuit breaker
-// builder.Services.AddHttpClient();
-
-builder.Services.ConfigureHttpClientDefaults(http =>
-{
-    http.AddStandardResilienceHandler();
-});
-builder.Services.AddHttpClient();
-
-
+// a payment POST is not idempotent, a retry after a lost response could charge the card twice;
+// keep the timeouts and circuit breaker, but never retry it
+builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>()
+    .AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods());
 
 var awsOptions = builder.Configuration.GetAWSOptions();
 awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
@@ -36,7 +31,6 @@ builder.Services.AddAWSService<IAmazonDynamoDB>();
 builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
 
 builder.Services.AddScoped<IPaymentRequestValidator, PaymentRequestValidator>();
-builder.Services.AddScoped<IBankHttpClient, BankHttpClient>();
 builder.Services.AddScoped<IBankResponseProcessor, BankResponseProcessor>();
 builder.Services.AddScoped<IBankService, BankService>();
 

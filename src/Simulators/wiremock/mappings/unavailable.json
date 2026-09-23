@@ -4,7 +4,7 @@
     "url": "/payments",
     "bodyPatterns": [
       { "matchesJsonPath": { "expression": "$.card_number", "matches": "^.*0$" } },
-      { "matchesJsonPath": "$.expiry_date" },
+      { "matchesJsonPath": { "expression": "$.expiry_date", "matches": "^(0[1-9]|1[0-2])/[0-9]{4}$" } },
       { "matchesJsonPath": "$.currency" },
       { "matchesJsonPath": "$.amount" },
       { "matchesJsonPath": "$.cvv" }
