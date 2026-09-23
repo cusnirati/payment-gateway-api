@@ -1,5 +1,4 @@
 services:
-
   dynamodb:
     container_name: dynamodb-local
     image: amazon/dynamodb-local:3.3.1
@@ -34,12 +33,13 @@ services:
 
         echo "local dynamodb setup completed"
 
-# https://github.com/wiremock/wiremock
+  # https://github.com/wiremock/wiremock
   bank-simulator-wiremock:
     container_name: bank-simulator-wiremock
     image: wiremock/wiremock:3.13.2
     depends_on:
-      - dynamodb-init
+      dynamodb-init:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
     command: --global-response-templating --verbose
@@ -47,3 +47,22 @@ services:
       - type: bind
         source: ./Simulators/wiremock
         target: /home/wiremock
+
+  # "docker compose up" still only starts the simulator and dynamodb instance in case you want to debug / run the api separately
+  # docker compose --profile api up -d --build
+  payment-gateway-api:
+    container_name: payment-gateway-api
+    profiles: ["api"]
+    build: .
+    ports:
+      - "5067:8080"
+    environment:
+      SimulatorBankEndpoint: "http://bank-simulator-wiremock:8080/payments"
+      AWS__ServiceURL: "http://dynamodb:8000"
+      AWS_ACCESS_KEY_ID: "dummy"
+      AWS_SECRET_ACCESS_KEY: "dummy"
+    depends_on:
+      dynamodb-init:
+        condition: service_completed_successfully
+      bank-simulator-wiremock:
+        condition: service_started

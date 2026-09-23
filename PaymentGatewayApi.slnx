@@ -3,6 +3,7 @@
     <Project Path="src/PaymentGatewayApi.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PaymentGatewayApiEndToEndTests/PaymentGatewayApiEndToEndTests.csproj" />
     <Project Path="tests/PaymentGatewayApiUnitTests/PaymentGatewayApiUnitTests.csproj" />
   </Folder>
 </Solution>
