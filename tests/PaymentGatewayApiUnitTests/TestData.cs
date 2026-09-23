@@ -5,6 +5,8 @@ namespace PaymentGatewayApiUnitTests;
 
 public static class TestData
 {
+    public const string MerchantId = "merchant-a";
+
     public static readonly Guid PaymentId = Guid.Parse("16bd4749-d150-48d1-a3ce-257457d74d1f");
     public static readonly DateTimeOffset Now = new(2026, 9, 15, 12, 0, 0, TimeSpan.Zero);
 
@@ -26,6 +28,7 @@ public static class TestData
         return new Payment
         {
             Id = PaymentId,
+            MerchantId = MerchantId,
             Status = status,
             CardNumberLastFour = "8873",
             ExpiryMonth = 11,

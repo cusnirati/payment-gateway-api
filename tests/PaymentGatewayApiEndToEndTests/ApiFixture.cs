@@ -11,19 +11,34 @@ namespace PaymentGatewayApiEndToEndTests;
 // shared by every test, waits for the api started by docker compose to answer its liveness check
 public sealed class ApiFixture : IAsyncLifetime
 {
+    // the local keys configured in docker-compose.yml and appsettings.Development.json
+    public const string MerchantAKey = "dev-key-merchant-a";
+    public const string MerchantBKey = "dev-key-merchant-b";
+
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
 
-    public HttpClient Client { get; }
+    private readonly Uri baseAddress = new(Environment.GetEnvironmentVariable("E2E_BASE_URL") ?? "http://localhost:5067");
 
     public ApiFixture()
     {
-        string baseUrl = Environment.GetEnvironmentVariable("E2E_BASE_URL") ?? "http://localhost:5067";
+        this.Client = this.CreateClient(MerchantAKey);
+        this.Anonymous = this.CreateClient(null);
+    }
 
-        this.Client = new HttpClient
+    // authenticated as merchant A
+    public HttpClient Client { get; }
+
+    public HttpClient Anonymous { get; }
+
+    public HttpClient CreateClient(string? apiKey)
+    {
+        HttpClient client = new() { BaseAddress = this.baseAddress, Timeout = TimeSpan.FromSeconds(30) };
+        if (apiKey is not null)
         {
-            BaseAddress = new Uri(baseUrl),
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+            client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+        }
+
+        return client;
     }
 
     public async ValueTask InitializeAsync()
@@ -33,7 +48,7 @@ public sealed class ApiFixture : IAsyncLifetime
         {
             try
             {
-                HttpResponseMessage response = await this.Client.GetAsync(new Uri("health/live", UriKind.Relative));
+                HttpResponseMessage response = await this.Anonymous.GetAsync(new Uri("health/live", UriKind.Relative));
                 if (response.IsSuccessStatusCode)
                 {
                     return;
@@ -48,13 +63,14 @@ public sealed class ApiFixture : IAsyncLifetime
         }
 
         throw new InvalidOperationException(
-            $"Payment gateway not reachable at {this.Client.BaseAddress} after {StartupTimeout.TotalSeconds}s. " +
+            $"Payment gateway not reachable at {this.baseAddress} after {StartupTimeout.TotalSeconds}s. " +
             "Start the stack from src/ with: docker compose --profile api up -d --build");
     }
 
     public ValueTask DisposeAsync()
     {
         this.Client.Dispose();
+        this.Anonymous.Dispose();
         return ValueTask.CompletedTask;
     }
 }

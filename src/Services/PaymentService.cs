@@ -9,9 +9,10 @@ namespace PaymentGatewayApi.Services;
 public interface IPaymentService
 {
     // takes a validated request through the bank and returns the payment with the bank's outcome
-    Task<Payment> ProcessPayment(PaymentRequest request, CancellationToken cancellationToken);
+    Task<Payment> ProcessPayment(string merchantId, PaymentRequest request, CancellationToken cancellationToken);
 
-    Task<Payment?> FindPayment(Guid paymentId, CancellationToken cancellationToken);
+    // null when the payment does not exist or belongs to another merchant; the caller cannot tell which
+    Task<Payment?> FindPayment(string merchantId, Guid paymentId, CancellationToken cancellationToken);
 }
 
 public partial class PaymentService : IPaymentService
@@ -30,12 +31,13 @@ public partial class PaymentService : IPaymentService
         this.timeProvider = timeProvider;
     }
 
-    public async Task<Payment> ProcessPayment(PaymentRequest request, CancellationToken cancellationToken)
+    public async Task<Payment> ProcessPayment(string merchantId, PaymentRequest request, CancellationToken cancellationToken)
     {
         DateTimeOffset now = this.timeProvider.GetUtcNow();
         Payment pending = new()
         {
             Id = Guid.NewGuid(),
+            MerchantId = merchantId,
             Status = PaymentStatus.Pending,
             CardNumberLastFour = request.CardNumber[^4..],
             ExpiryMonth = request.ExpiryMonth,
@@ -82,9 +84,12 @@ public partial class PaymentService : IPaymentService
         return completed;
     }
 
-    public Task<Payment?> FindPayment(Guid paymentId, CancellationToken cancellationToken)
+    public async Task<Payment?> FindPayment(string merchantId, Guid paymentId, CancellationToken cancellationToken)
     {
-        return this.paymentRepo.Find(paymentId, cancellationToken);
+        Payment? payment = await this.paymentRepo.Find(paymentId, cancellationToken);
+
+        // another merchant's payment is reported exactly like a missing one, so ids cannot be probed
+        return payment?.MerchantId == merchantId ? payment : null;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "ProcessPayment, PaymentId={PaymentId}, Status={Status}")]

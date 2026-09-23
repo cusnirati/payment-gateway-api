@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using PaymentGatewayApi.Controllers;
 using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Security;
 using PaymentGatewayApi.Services;
 using Xunit;
 
@@ -28,7 +30,13 @@ public class PaymentsControllerTests
         this.controller = new PaymentsController(
             NullLogger<PaymentsController>.Instance, this.validator.Object, this.paymentService.Object)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(MerchantClaims.MerchantId, TestData.MerchantId)], "test"))
+                }
+            },
             ProblemDetailsFactory = new SimpleProblemDetailsFactory()
         };
     }
@@ -36,7 +44,7 @@ public class PaymentsControllerTests
     private void SetupPayment(PaymentStatus status)
     {
         this.paymentService
-            .Setup(s => s.ProcessPayment(It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.ProcessPayment(TestData.MerchantId, It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(TestData.Payment(status));
     }
 
@@ -49,7 +57,7 @@ public class PaymentsControllerTests
     public async Task GetPayment_Found_ReturnsPayment()
     {
         this.paymentService
-            .Setup(s => s.FindPayment(TestData.PaymentId, It.IsAny<CancellationToken>()))
+            .Setup(s => s.FindPayment(TestData.MerchantId, TestData.PaymentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(TestData.Payment(PaymentStatus.Authorized));
 
         ActionResult<PaymentResponse> result = await this.controller.GetPayment(TestData.PaymentId, TestContext.Current.CancellationToken);
@@ -64,7 +72,7 @@ public class PaymentsControllerTests
     public async Task GetPayment_Missing_ReturnsNotFound()
     {
         this.paymentService
-            .Setup(s => s.FindPayment(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.FindPayment(TestData.MerchantId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Payment?)null);
 
         ActionResult<PaymentResponse> result = await this.controller.GetPayment(TestData.PaymentId, TestContext.Current.CancellationToken);
@@ -102,7 +110,7 @@ public class PaymentsControllerTests
         ValidationProblemDetails problem = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
         Assert.Equal(["Must be 3 or 4 digits."], problem.Errors["cvv"]);
         this.paymentService.Verify(
-            s => s.ProcessPayment(It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+            s => s.ProcessPayment(It.IsAny<string>(), It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

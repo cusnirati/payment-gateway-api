@@ -83,6 +83,7 @@ public class PaymentsRepository : IPaymentsRepository
         Dictionary<string, AttributeValue> item = new()
         {
             ["PaymentId"] = new AttributeValue { S = payment.Id.ToString() },
+            ["MerchantId"] = new AttributeValue { S = payment.MerchantId },
             ["Status"] = new AttributeValue { S = payment.Status.ToString() },
             ["CardNumberLastFour"] = new AttributeValue { S = payment.CardNumberLastFour },
             ["ExpiryMonth"] = new AttributeValue { N = payment.ExpiryMonth.ToString(CultureInfo.InvariantCulture) },
@@ -106,6 +107,7 @@ public class PaymentsRepository : IPaymentsRepository
         return new Payment
         {
             Id = Guid.Parse(item["PaymentId"].S),
+            MerchantId = item["MerchantId"].S,
             Status = Enum.Parse<PaymentStatus>(item["Status"].S),
             CardNumberLastFour = item["CardNumberLastFour"].S,
             ExpiryMonth = int.Parse(item["ExpiryMonth"].N, CultureInfo.InvariantCulture),

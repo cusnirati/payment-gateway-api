@@ -2,16 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Security;
 using PaymentGatewayApi.Services;
 
 namespace PaymentGatewayApi.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/payments")]
 public partial class PaymentsController : ControllerBase
 {
@@ -26,7 +30,7 @@ public partial class PaymentsController : ControllerBase
         this.paymentService = paymentService;
     }
 
-    // curl http://localhost:5067/api/payments/16bd4749-d150-48d1-a3ce-257457d74d1f
+    // curl http://localhost:5067/api/payments/16bd4749-d150-48d1-a3ce-257457d74d1f -H "X-Api-Key: dev-key-merchant-a"
     [HttpGet("{paymentId:guid}")]
     [ProducesResponseType<PaymentResponse>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
@@ -34,7 +38,7 @@ public partial class PaymentsController : ControllerBase
     {
         this.LogGetPayment(paymentId, "Started");
 
-        Payment? payment = await this.paymentService.FindPayment(paymentId, cancellationToken);
+        Payment? payment = await this.paymentService.FindPayment(this.User.GetMerchantId(), paymentId, cancellationToken);
         if (payment is null)
         {
             this.LogGetPayment(paymentId, "NotFound");
@@ -44,12 +48,14 @@ public partial class PaymentsController : ControllerBase
         return PaymentResponse.From(payment);
     }
 
-    // curl -X POST http://localhost:5067/api/payments -H "Content-Type: application/json" \
+    // curl -X POST http://localhost:5067/api/payments -H "X-Api-Key: dev-key-merchant-a" -H "Content-Type: application/json" \
     //   -d '{"cardNumber":"2222405343248873","expiryMonth":4,"expiryYear":2030,"currency":"GBP","amount":1050,"cvv":"123"}'
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.PaymentsPerMerchant)]
     [Consumes("application/json")]
     [ProducesResponseType<PaymentResponse>(StatusCodes.Status201Created, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway, "application/problem+json")]
     public async Task<ActionResult<PaymentResponse>> PostPayment(PaymentRequest request, CancellationToken cancellationToken)
     {
@@ -60,7 +66,7 @@ public partial class PaymentsController : ControllerBase
             return this.ValidationProblem(ToModelState(errors));
         }
 
-        Payment payment = await this.paymentService.ProcessPayment(request, cancellationToken);
+        Payment payment = await this.paymentService.ProcessPayment(this.User.GetMerchantId(), request, cancellationToken);
 
         // a declined payment is a valid outcome, the issuer said no: it is created like an authorized one
         if (payment.Status is PaymentStatus.Authorized or PaymentStatus.Declined)

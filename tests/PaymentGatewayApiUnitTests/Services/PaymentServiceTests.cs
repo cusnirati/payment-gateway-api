@@ -49,11 +49,12 @@ public class PaymentServiceTests
             .Callback(() => calls.Add("bank"))
             .ReturnsAsync(BankOutcome.Declined);
 
-        await this.service.ProcessPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        await this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(["add", "bank"], calls);
         Assert.NotNull(added);
         Assert.Equal(PaymentStatus.Pending, added.Status);
+        Assert.Equal(TestData.MerchantId, added.MerchantId);
         Assert.Equal("8873", added.CardNumberLastFour);
         Assert.Equal(TestData.Now, added.CreatedAt);
     }
@@ -78,7 +79,7 @@ public class PaymentServiceTests
             .Callback(() => this.timeProvider.Advance(TimeSpan.FromSeconds(2)))
             .ReturnsAsync(outcome);
 
-        Payment result = await this.service.ProcessPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        Payment result = await this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(status, result.Status);
         Assert.Equal(outcome.AuthorizationCode, result.AuthorizationCode);
@@ -95,7 +96,7 @@ public class PaymentServiceTests
             .ThrowsAsync(new AmazonDynamoDBException("unavailable"));
 
         await Assert.ThrowsAsync<AmazonDynamoDBException>(
-            () => this.service.ProcessPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken));
+            () => this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken));
 
         this.bankClient.Verify(
             c => c.Authorize(It.IsAny<Guid>(), It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -109,7 +110,7 @@ public class PaymentServiceTests
             .Setup(r => r.Complete(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new AmazonDynamoDBException("unavailable"));
 
-        Payment result = await this.service.ProcessPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        Payment result = await this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(PaymentStatus.Authorized, result.Status);
     }
@@ -121,7 +122,7 @@ public class PaymentServiceTests
         await cancelled.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => this.service.ProcessPayment(TestData.ValidPaymentRequest(), cancelled.Token));
+            () => this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), cancelled.Token));
 
         this.bankClient.Verify(
             c => c.Authorize(It.IsAny<Guid>(), It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -132,7 +133,7 @@ public class PaymentServiceTests
     {
         this.SetupBank(BankOutcome.Declined);
 
-        await this.service.ProcessPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        await this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         this.bankClient.Verify(
             c => c.Authorize(It.IsAny<Guid>(), It.IsAny<PaymentRequest>(), CancellationToken.None), Times.Once);
@@ -144,8 +145,20 @@ public class PaymentServiceTests
         Payment stored = TestData.Payment(PaymentStatus.Authorized);
         this.paymentRepo.Setup(r => r.Find(TestData.PaymentId, It.IsAny<CancellationToken>())).ReturnsAsync(stored);
 
-        Payment? result = await this.service.FindPayment(TestData.PaymentId, TestContext.Current.CancellationToken);
+        Payment? result = await this.service.FindPayment(TestData.MerchantId, TestData.PaymentId, TestContext.Current.CancellationToken);
 
         Assert.Same(stored, result);
+    }
+
+    [Fact]
+    public async Task FindPayment_AnotherMerchantsPayment_ReturnsNull()
+    {
+        this.paymentRepo
+            .Setup(r => r.Find(TestData.PaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TestData.Payment(PaymentStatus.Authorized));
+
+        Payment? result = await this.service.FindPayment("merchant-b", TestData.PaymentId, TestContext.Current.CancellationToken);
+
+        Assert.Null(result);
     }
 }

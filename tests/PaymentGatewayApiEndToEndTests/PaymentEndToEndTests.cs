@@ -10,10 +10,12 @@ namespace PaymentGatewayApiEndToEndTests;
 
 public class PaymentEndToEndTests
 {
+    private readonly ApiFixture fixture;
     private readonly HttpClient client;
 
     public PaymentEndToEndTests(ApiFixture fixture)
     {
+        this.fixture = fixture;
         this.client = fixture.Client;
     }
 
@@ -45,7 +47,7 @@ public class PaymentEndToEndTests
     [InlineData("health/ready")] // the stack's DynamoDB table is reachable
     public async Task Health_ReturnsHealthy(string path)
     {
-        HttpResponseMessage response = await this.client.GetAsync(path, TestContext.Current.CancellationToken);
+        HttpResponseMessage response = await this.fixture.Anonymous.GetAsync(path, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -54,7 +56,8 @@ public class PaymentEndToEndTests
     [Fact]
     public async Task OpenApi_NotServedOutsideDevelopment()
     {
-        // the container runs in Production
+        // the container runs in Production; asked anonymously, any unmapped path is a 401 like every other
+        // endpoint that does not opt out of authentication
         HttpResponseMessage response = await this.client.GetAsync("openapi/v1.json", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -172,5 +175,32 @@ public class PaymentEndToEndTests
         HttpResponseMessage response = await this.client.GetAsync("api/payments/not-a-guid", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("not-a-configured-key")]
+    public async Task PostPayment_WithoutAValidApiKey_Unauthorized(string? apiKey)
+    {
+        using HttpClient caller = this.fixture.CreateClient(apiKey);
+
+        HttpResponseMessage response = await caller.PostAsJsonAsync(
+            "api/payments", TestData.ValidPayment(TestData.AuthorizedCard), TestContext.Current.CancellationToken);
+
+        await AssertProblem(response, HttpStatusCode.Unauthorized);
+        Assert.Contains(response.Headers.WwwAuthenticate, header => header.Scheme == "ApiKey");
+    }
+
+    [Fact]
+    public async Task GetPayment_AnotherMerchantsPayment_NotFound()
+    {
+        HttpResponseMessage created = await this.Post(TestData.ValidPayment(TestData.AuthorizedCard));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using HttpClient merchantB = this.fixture.CreateClient(ApiFixture.MerchantBKey);
+
+        HttpResponseMessage response = await merchantB.GetAsync(created.Headers.Location, TestContext.Current.CancellationToken);
+
+        // indistinguishable from an id that does not exist, so ids cannot be probed
+        await AssertProblem(response, HttpStatusCode.NotFound);
     }
 }

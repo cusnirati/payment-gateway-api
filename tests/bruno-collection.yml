@@ -21,6 +21,8 @@ items:
       method: GET
       url: http://localhost:5067/api/payments/abcbc011-c8d9-484b-a67a-28fbda7461f3
       headers:
+        - name: X-Api-Key
+          value: dev-key-merchant-a
       auth: inherit
     settings:
       encodeUrl: true
@@ -51,6 +53,8 @@ items:
       method: POST
       url: http://localhost:5067/api/payments
       headers:
+        - name: X-Api-Key
+          value: dev-key-merchant-a
         - name: Content-Type
           value: application/json
         - name: Accept
@@ -84,6 +88,8 @@ items:
       method: POST
       url: http://localhost:5067/api/payments
       headers:
+        - name: X-Api-Key
+          value: dev-key-merchant-a
         - name: Content-Type
           value: application/json
         - name: Accept
@@ -117,6 +123,8 @@ items:
       method: POST
       url: http://localhost:5067/api/payments
       headers:
+        - name: X-Api-Key
+          value: dev-key-merchant-a
         - name: Content-Type
           value: application/json
         - name: Accept

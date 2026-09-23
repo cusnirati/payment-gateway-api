@@ -60,6 +60,11 @@ services:
       - "5067:8080"
     environment:
       Bank__BaseUrl: "http://bank-simulator-wiremock:8080/"
+      # the local keys "dev-key-merchant-a" / "dev-key-merchant-b", as their SHA-256
+      ApiKeys__Merchants__0__MerchantId: "merchant-a"
+      ApiKeys__Merchants__0__KeySha256: "c8c3a5a56d9ba1bff80c60a7d11478525838e0bef3d728fc4185aa3da1b84015"
+      ApiKeys__Merchants__1__MerchantId: "merchant-b"
+      ApiKeys__Merchants__1__KeySha256: "eb56dcd8cc40c7452f90e58fb83f526c4985c56cd51633ebe3f40131f0d1dd41"
       AWS__ServiceURL: "http://dynamodb:8000"
       AWS_ACCESS_KEY_ID: "dummy"
       AWS_SECRET_ACCESS_KEY: "dummy"

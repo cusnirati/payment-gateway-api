@@ -6,6 +6,9 @@ namespace PaymentGatewayApi.Models;
 public sealed record Payment
 {
     public required Guid Id { get; init; }
+
+    // the authenticated merchant that created it, the only one allowed to read it
+    public required string MerchantId { get; init; }
     public required PaymentStatus Status { get; init; }
     public required string CardNumberLastFour { get; init; }
     public required int ExpiryMonth { get; init; }

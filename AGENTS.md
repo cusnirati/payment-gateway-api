@@ -95,12 +95,22 @@ A request that fails validation never becomes a payment.
 
 ### HTTP contract
 
+Every endpoint needs an `X-Api-Key` header (the authorization fallback policy), except
+`/health/*` and the Development OpenAPI document. `ApiKeyAuthenticationHandler`
+(`Security/`) maps the key to a merchant through `ApiKeys:Merchants`, which holds only
+SHA-256 hashes of the keys. The local keys are `dev-key-merchant-a` and `dev-key-merchant-b`
+(`appsettings.Development.json`, and the compose file for the container). A payment belongs
+to the merchant that created it; another merchant's `GET` is a `404`, like a missing id.
+`POST` is rate limited per merchant (`RateLimiting`, `429` with `Retry-After`).
+
 | Outcome | Response |
 | --- | --- |
 | `Authorized` / `Declined` | `201` + `Location: /api/payments/{id}` + the payment |
 | invalid request (validator or model binding) | `400` `ValidationProblemDetails`, errors keyed by JSON field |
 | `Failed` / `Unknown` | `502` `ProblemDetails` with `paymentId` and `paymentStatus` extensions |
-| `GET` of an unknown id | `404` `ProblemDetails` |
+| `GET` of an unknown id, or another merchant's | `404` `ProblemDetails` |
+| missing or unknown API key | `401` `ProblemDetails`, `WWW-Authenticate: ApiKey` |
+| rate limit exceeded | `429` `ProblemDetails` with `Retry-After` |
 | unhandled exception | `500` `ProblemDetails` (`GlobalExceptionHandler`), never the exception message |
 
 Amounts are integers in the currency's minor unit (`1050` is £10.50), currencies come from
@@ -130,8 +140,10 @@ singletons, as is the `IAmazonDynamoDB` client registered through
 resilience handler has retries disabled, and `PaymentService` is scoped so it never captures it. New services follow the existing pattern — interface
 and implementation in the same file under `Services/` — and get registered there.
 
-Middleware order is `CorrelationIdMiddleware`, `UseSerilogRequestLogging`, then `UseExceptionHandler` (with `GlobalExceptionHandler`
-and `AddProblemDetails`), then `UseStatusCodePages` so bodiless errors get a `ProblemDetails` too.
+Middleware order: `CorrelationIdMiddleware`, `UseSerilogRequestLogging`, `UseExceptionHandler`
+(with `GlobalExceptionHandler` and `AddProblemDetails`), `UseStatusCodePages` so bodiless errors
+get a `ProblemDetails` too, Swagger UI (Development) or HSTS + HTTPS redirection (elsewhere),
+then authentication, authorization, the rate limiter and a `MerchantId` log-context push.
 
 ## Bank simulator behaviour
 
@@ -171,6 +183,6 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   swaps in a readable console format and adds files under `src/z-logs/` (gitignored).
   `UseSerilogRequestLogging` writes one summary line per request.
 - **Settings bind to validated options classes** in `Configuration/` (`Bank`, `Payments`,
-  `Dynamo`), checked at startup. Local-only values (the simulator URL, `AWS:ServiceURL`
+  `Dynamo`, `ApiKeys`, `RateLimiting`), checked at startup. Local-only values (the simulator URL, `AWS:ServiceURL`
   pointed at DynamoDB Local) live in `appsettings.Development.json`; the compose file sets
   them for the container through environment variables.
