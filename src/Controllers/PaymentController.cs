@@ -13,21 +13,18 @@ namespace PaymentGatewayApi.Controllers;
 public partial class PaymentController : ControllerBase
 {
     private readonly ILogger<PaymentController> logger;
-    private readonly IPaymentsRepository paymentRepo;
     private readonly IPaymentRequestValidator validator;
-    private readonly IBankService bankService;
+    private readonly IPaymentService paymentService;
 
-    public PaymentController(
-        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IPaymentRequestValidator validator, IBankService bankService)
+    public PaymentController(ILogger<PaymentController> logger, IPaymentRequestValidator validator, IPaymentService paymentService)
     {
         this.logger = logger;
-        this.paymentRepo = paymentRepo;
         this.validator = validator;
-        this.bankService = bankService;
+        this.paymentService = paymentService;
     }
 
     // curl -k http://localhost:5067/api/payment
-    [HttpGet()]
+    [HttpGet]
     public ActionResult<string> GetHealthcheck()
     {
         this.LogGetHealthcheck("Started");
@@ -36,55 +33,52 @@ public partial class PaymentController : ControllerBase
     }
 
     // curl -k http://localhost:5067/api/payment/16bd4749-d150-48d1-a3ce-257457d74d1f
-    [HttpGet("{paymentId}")]
-    public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId, CancellationToken cancellationToken)
+    [HttpGet("{paymentId:guid}")]
+    public async Task<ActionResult<PostPaymentResponse>> GetPayment(Guid paymentId, CancellationToken cancellationToken)
     {
         this.LogGetPayment(paymentId, "Started");
 
-        var payment = await this.paymentRepo.Find(paymentId, cancellationToken);
+        Payment? payment = await this.paymentService.FindPayment(paymentId, cancellationToken);
         if (payment is null)
         {
             return new NotFoundObjectResult("payment not found");
         }
 
-        return new OkObjectResult(payment);
+        return new OkObjectResult(PostPaymentResponse.From(payment));
     }
 
-    [HttpPost()]
-    public async Task<ActionResult<PaymentStatus>> PostPayment([FromBody] PaymentRequest payment, CancellationToken cancellationToken)
+    [HttpPost]
+    public async Task<ActionResult<PaymentStatus>> PostPayment([FromBody] PaymentRequest request, CancellationToken cancellationToken)
     {
-        payment.PaymentId = Guid.NewGuid().ToString();
-        this.LogPostPayment(payment.PaymentId, "Started");
+        this.LogPostPayment("Started");
 
         bool isValid =
-            this.validator.IsCardNumberValid(payment) &&
-            this.validator.IsExpiryValid(payment) &&
-            this.validator.IsAmountValid(payment) &&
-            this.validator.IsCurrencyCodeValid(payment) &&
-            this.validator.IsCvvValid(payment);
+            this.validator.IsCardNumberValid(request) &&
+            this.validator.IsExpiryValid(request) &&
+            this.validator.IsAmountValid(request) &&
+            this.validator.IsCurrencyCodeValid(request) &&
+            this.validator.IsCvvValid(request);
 
         if (!isValid)
         {
-            return new BadRequestObjectResult(PaymentStatus.Rejected.ToString());
+            return new BadRequestObjectResult("Rejected");
         }
 
-        // good place to split into a separate service if validation would include fraud detection, sanction screening, etc
-
-        var status = await this.bankService.ExecutePayment(payment, cancellationToken);
-        if (status == PaymentStatus.Authorized)
+        Payment payment = await this.paymentService.ProcessPayment(request, cancellationToken);
+        if (payment.Status == PaymentStatus.Authorized)
         {
-            return new OkObjectResult(payment.PaymentId);
+            return new OkObjectResult(payment.Id.ToString());
         }
 
-        return new BadRequestObjectResult(status.ToString());
+        return new BadRequestObjectResult(payment.Status.ToString());
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "GetHealthcheck, Status={Status}")]
     private partial void LogGetHealthcheck(string status);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "GetPayment, PaymentId={PaymentId}, Status={Status}")]
-    private partial void LogGetPayment(string paymentId, string status);
+    private partial void LogGetPayment(Guid paymentId, string status);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "PostPayment, PaymentId={PaymentId}, Status={Status}")]
-    private partial void LogPostPayment(string? paymentId, string status);
+    [LoggerMessage(Level = LogLevel.Information, Message = "PostPayment, Status={Status}")]
+    private partial void LogPostPayment(string status);
 }

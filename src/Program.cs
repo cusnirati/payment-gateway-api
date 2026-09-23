@@ -32,7 +32,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 // a payment POST is not idempotent, a retry after a lost response could charge the card twice;
 // keep the timeouts and circuit breaker (tunable under Bank:Resilience), but never retry it
-builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>((services, client) =>
+builder.Services.AddHttpClient<IBankClient, BankClient>((services, client) =>
         client.BaseAddress = services.GetRequiredService<IOptions<BankOptions>>().Value.BaseUrl)
     .AddStandardResilienceHandler(builder.Configuration.GetSection("Bank:Resilience"))
     .Configure(options => options.Retry.DisableForUnsafeHttpMethods());
@@ -42,11 +42,11 @@ awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
 builder.Services.AddDefaultAWSOptions(awsOptions);
 builder.Services.AddAWSService<IAmazonDynamoDB>();
 
+// stateless, so shared; the payment service is scoped because it holds the typed bank client,
+// which must not be captured by a singleton (its handler is rotated by IHttpClientFactory)
 builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
-
-builder.Services.AddScoped<IPaymentRequestValidator, PaymentRequestValidator>();
-builder.Services.AddScoped<IBankResponseProcessor, BankResponseProcessor>();
-builder.Services.AddScoped<IBankService, BankService>();
+builder.Services.AddSingleton<IPaymentRequestValidator, PaymentRequestValidator>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

@@ -73,17 +73,17 @@ public class PaymentEndToEndTests
 
         HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
 
-        await AssertBadRequest(response, PaymentStatus.Declined);
+        await AssertBadRequest(response, nameof(PaymentStatus.Declined));
     }
 
     [Fact]
-    public async Task PostPayment_CardEndingZero_InternalError()
+    public async Task PostPayment_CardEndingZero_Failed()
     {
         PaymentRequest payment = TestData.ValidPaymentRequest(TestData.BankUnavailableCard);
 
         HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
 
-        await AssertBadRequest(response, PaymentStatus.InternalError);
+        await AssertBadRequest(response, nameof(PaymentStatus.Failed));
     }
 
     [Theory]
@@ -108,7 +108,7 @@ public class PaymentEndToEndTests
 
         HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
 
-        await AssertBadRequest(response, PaymentStatus.Rejected);
+        await AssertBadRequest(response, "Rejected");
     }
 
     [Fact]
@@ -119,9 +119,9 @@ public class PaymentEndToEndTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private static async Task AssertBadRequest(HttpResponseMessage response, PaymentStatus expected)
+    private static async Task AssertBadRequest(HttpResponseMessage response, string expected)
     {
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(expected.ToString(), await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(expected, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 }

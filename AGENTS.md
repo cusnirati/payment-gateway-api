@@ -38,9 +38,8 @@ dotnet run --project tests/PaymentGatewayApiUnitTests   # equivalent, xUnit v3 p
 Target the test project explicitly: a bare `dotnet test` (or `--solution`) fails because the
 web project's `Microsoft.NET.Test.Sdk` reference makes it look like a VSTest project.
 
-`BankHttpClient` and `PaymentsRepository` are deliberately not unit-tested beyond
-`BankHttpClient.ToBankRequest` (the bank contract mapping); otherwise they are only mocked
-through their interfaces. Tests commented `// NOTE: defect` pin current, known-wrong
+`BankClient` is unit-tested through a `StubHttpMessageHandler`. `PaymentsRepository` is
+deliberately not unit-tested; it is only mocked through its interface. Tests commented `// NOTE: defect` pin current, known-wrong
 behaviour — update them when the defect is fixed.
 
 End-to-end tests live in `tests/PaymentGatewayApiEndToEndTests`. They are black-box: they call
@@ -66,39 +65,50 @@ written above each action in `Controllers/PaymentController.cs`.
 
 A `POST /api/payment` flows through one chain, each link behind an interface:
 
-`PaymentController` assigns a new `PaymentId` GUID, runs all five
-`IPaymentRequestValidator` checks (`Services/PaymentRequestValidator.cs`), then hands off to
-`IBankService` (`Services/BankService.cs`). `BankService` calls `IBankHttpClient`
-(`Services/BankHttpClient.cs`, POSTs to the `SimulatorBankEndpoint`), passes a successful
-response to `IBankResponseProcessor` (`Services/BankResponseProcessor.cs`) to map it onto a
-`PostPaymentResponse`, and persists that via `IPostPaymentRepository`
-(`Services/PaymentsRepository.cs`) before returning the status.
+`PaymentController` runs the five `IPaymentRequestValidator` checks
+(`Services/PaymentRequestValidator.cs`), then hands the request to `IPaymentService`
+(`Services/PaymentService.cs`), which:
 
-`PaymentStatus` (`Models/PaymentStatus.cs`) is the contract between layers:
+1. stores a `Payment` with status `Pending` through `IPaymentsRepository`
+   (`Services/PaymentsRepository.cs`), so a card is never charged without a record; if this
+   write fails, the request fails and the bank is never called;
+2. calls `IBankClient.Authorize` (`Services/BankClient.cs`), a typed `HttpClient` that owns
+   the bank contract and turns every answer, or its absence, into a `BankOutcome`;
+3. records the outcome and the bank's authorization code with `Complete`, which only
+   overwrites a payment that is still `Pending`. If that write fails, the merchant still gets
+   the real outcome, and a `Critical` log line carries what reconciliation needs.
 
-- `Rejected` — local validation failed; the bank was never called.
-- `Declined` — the bank answered `authorized: false`.
-- `InternalError` — the bank returned non-2xx, or its body could not be parsed.
+`PaymentStatus` (`Models/PaymentStatus.cs`) is the payment's lifecycle, stored by name:
 
-### Models come in two pairs, deliberately
+- `Pending` — recorded, the bank has not answered.
+- `Authorized` / `Declined` — the bank's answer.
+- `Failed` — the bank answered 4xx or 503, or the circuit breaker is open: nothing was charged.
+- `Unknown` — a timeout, a dropped connection, another 5xx or an unreadable body: the card
+  may have been charged, so the payment needs reconciliation.
 
-`PaymentRequest` / `PostPaymentResponse` are this gateway's own API shape.
-`BankRequest` / `BankResponse` model the acquiring bank's contract and use `snake_case`
-through `[JsonPropertyName]` (`card_number`, `expiry_date`, `authorization_code`). Keep
-them separate — collapsing them couples our public API to the bank's.
+A request that fails validation never becomes a payment.
+
+### Models come in pairs, deliberately
+
+`PaymentRequest` / `PostPaymentResponse` are this gateway's own API shape, `Payment` is its
+domain record, and `BankRequest` / `BankResponse` model the acquiring bank's contract with
+`snake_case` names through `[JsonPropertyName]` (`card_number`, `expiry_date`,
+`authorization_code`). Keep them separate: collapsing them couples our public API to the
+bank's, or our storage to either.
 
 ### Persistence
 
-DynamoDB table `Payments`, hash key `PaymentId`. Each item is just `PaymentId` (S) plus
-`PaymentRaw` (S) holding the JSON-serialized `PostPaymentResponse`. Only the last four card
-digits are ever stored.
+DynamoDB table `Payments`, hash key `PaymentId`. Each item has one attribute per `Payment`
+field (`Status` as its name, timestamps as ISO 8601, `AuthorizationCode` only once
+authorized); only the last four card digits are ever stored. The mapping lives in
+`PaymentsRepository.ToItem` / `FromItem`.
 
 ### Wiring
 
-All DI registration lives in `Program.cs`. Services are scoped, except `BankHttpClient`, a
-typed `HttpClient` (transient) whose resilience handler has retries disabled; the repository is a
-singleton, as is the `IAmazonDynamoDB` client registered through
-`AddAWSService<IAmazonDynamoDB>()`. New services follow the existing pattern — interface
+All DI registration lives in `Program.cs`. The repository and the validator are stateless
+singletons, as is the `IAmazonDynamoDB` client registered through
+`AddAWSService<IAmazonDynamoDB>()`. `BankClient` is a typed `HttpClient` (transient) whose
+resilience handler has retries disabled, and `PaymentService` is scoped so it never captures it. New services follow the existing pattern — interface
 and implementation in the same file under `Services/` — and get registered there.
 
 Middleware order is `LogMiddleware` then `ErrorMiddleware`.
@@ -112,8 +122,8 @@ The WireMock mappings in `src/Simulators/wiremock/mappings/` select a response f
 | --- | --- | --- |
 | odd digit | `200` `authorized: true` | `Authorized` |
 | even digit (not 0) | `200` `authorized: false` | `Declined` |
-| `0` | `503` | `InternalError` |
-| any missing field | `400` | `InternalError` |
+| `0` | `503` | `Failed` |
+| any missing field | `400` | `Failed` |
 
 The three `200`/`503` stubs also require `expiry_date` in the bank's `MM/yyyy` format, so a
 malformed expiry falls through like any other unmatched request.

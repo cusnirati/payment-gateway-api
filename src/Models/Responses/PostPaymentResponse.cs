@@ -9,4 +9,19 @@ public class PostPaymentResponse
     public int ExpiryYear { get; set; }
     public string? Currency { get; set; }
     public decimal Amount { get; set; }
+
+    // the authorization code and timestamps stay internal to the gateway
+    public static PostPaymentResponse From(Payment payment)
+    {
+        return new PostPaymentResponse
+        {
+            PaymentId = payment.Id.ToString(),
+            Status = payment.Status,
+            CardNumberLastFour = payment.CardNumberLastFour,
+            ExpiryMonth = payment.ExpiryMonth,
+            ExpiryYear = payment.ExpiryYear,
+            Currency = payment.Currency,
+            Amount = payment.Amount
+        };
+    }
 }

@@ -20,5 +20,4 @@ public class PaymentRequest
     public int ExpiryYear { get; set; }
 
     public decimal Amount { get; set; }
-    public string? PaymentId { get; set; }
 }

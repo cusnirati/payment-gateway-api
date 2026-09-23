@@ -32,7 +32,7 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
     {
         if (!Regex.IsMatch(payment.CardNumber, @"^\d{14,19}$"))
         {
-            this.LogRejected(payment.PaymentId, "Rejected", "IsCardNumberValid");
+            this.LogRejected("Rejected", "IsCardNumberValid");
             return false;
         }
 
@@ -46,7 +46,7 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
 
         if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
         {
-            this.LogRejected(payment.PaymentId, "Rejected", "IsExpiryMonthValid");
+            this.LogRejected("Rejected", "IsExpiryMonthValid");
 
             return false;
         }
@@ -56,7 +56,7 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
         bool isTooFarAhead = payment.ExpiryYear > now.Year + MaxExpiryYearsAhead;
         if (isExpired || isTooFarAhead)
         {
-            this.LogRejected(payment.PaymentId, "Rejected", "IsExpiryValid");
+            this.LogRejected("Rejected", "IsExpiryValid");
 
             return false;
         }
@@ -68,7 +68,7 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
     {
         if (payment.Amount < 1)
         {
-            this.LogRejected(payment.PaymentId, "Rejected", "IsAmountValid");
+            this.LogRejected("Rejected", "IsAmountValid");
 
             return false;
         }
@@ -81,7 +81,7 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
         // should be a list of accepted currencies, via database, config
         if (payment.Currency.Length != 3)
         {
-            this.LogRejected(payment.PaymentId, "Rejected", "IsCurrencyCodeValid");
+            this.LogRejected("Rejected", "IsCurrencyCodeValid");
 
             return false;
         }
@@ -94,7 +94,7 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
         // 3 or 4 digits
         if (!Regex.IsMatch(payment.Cvv, @"^\d{3,4}$"))
         {
-            this.LogRejected(payment.PaymentId, "Rejected", "IsCvvValid");
+            this.LogRejected("Rejected", "IsCvvValid");
 
             return false;
         }
@@ -102,6 +102,6 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
         return true;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Validate, PaymentId={PaymentId}, Status={Status}, Rule={Rule}")]
-    private partial void LogRejected(string? paymentId, string status, string rule);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Validate, Status={Status}, Rule={Rule}")]
+    private partial void LogRejected(string status, string rule);
 }
