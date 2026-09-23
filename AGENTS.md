@@ -12,7 +12,8 @@ cd src && docker compose up -d
 ```
 
 That brings up DynamoDB Local on `:8000`, creates the `Payments` table, and starts the
-WireMock acquiring-bank simulator on `:8080`.
+WireMock acquiring-bank simulator on `:8080`. Add `--profile api` to also build and run the
+API container on `:5067` (don't combine it with `dotnet run`, they share the port).
 
 ```bash
 dotnet build PaymentGatewayApi.slnx                  # from repo root
@@ -41,9 +42,24 @@ web project's `Microsoft.NET.Test.Sdk` reference makes it look like a VSTest pro
 mocked through their interfaces. Tests commented `// NOTE: defect` pin current, known-wrong
 behaviour — update them when the defect is fixed.
 
-End-to-end verification is manual: the Bruno collection at `tests/bruno-collection.yml` (covers
-health, get-by-id, authorized/declined/500 posts, and a direct simulator post), or the
-`curl` lines written above each action in `Controllers/PaymentController.cs`.
+End-to-end tests live in `tests/PaymentGatewayApiEndToEndTests`. They are black-box: they call
+the running API over HTTP (the `src` project is referenced only for its models), so they need
+the whole stack up, including the API container, which sits behind the compose `api` profile:
+
+```bash
+cd src && docker compose --profile api up -d --build    # api on :5067, same port as dotnet run
+dotnet test --project tests/PaymentGatewayApiEndToEndTests
+```
+
+An assembly fixture (`ApiFixture`) polls the healthcheck for 30s before failing. The base URL
+defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to run against
+`dotnet run` instead of the container). The suite takes ~10s because the bank's `503` goes
+through the standard resilience handler's retries. String results (`"ok"`, the payment id,
+status names) come back as `text/plain`, not JSON strings.
+
+For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health,
+get-by-id, authorized/declined/500 posts, and a direct simulator post), or the `curl` lines
+written above each action in `Controllers/PaymentController.cs`.
 
 ## Architecture
 
@@ -96,6 +112,9 @@ The WireMock mappings in `src/Simulators/wiremock/mappings/` select a response f
 | even digit (not 0) | `200` `authorized: false` | `Declined` |
 | `0` | `503` | `InternalError` |
 | any missing field | `400` | `InternalError` |
+
+Anything else hits the catch-all `default.json` (`400`). It carries `"priority": 10` so it never
+shadows the specific stubs; WireMock breaks equal-priority ties by load order.
 
 ## Conventions
 
