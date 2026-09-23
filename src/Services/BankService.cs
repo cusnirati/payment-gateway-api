@@ -35,7 +35,14 @@ public class BankService : IBankService
         HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(payment);
         if (bankResponse.IsSuccessStatusCode)
         {
-            PostPaymentResponse paymentResponse = await this.responseProcessor.ParseBankResponse(payment, bankResponse);
+            PostPaymentResponse? paymentResponse = await this.responseProcessor.ParseBankResponse(payment, bankResponse);
+            if (paymentResponse is null)
+            {
+                // the bank answered 2xx but its body is unusable, so the outcome is unknown and there is nothing to persist
+                this.logger.LogError("ExecuteBankPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Failed");
+                return PaymentStatus.InternalError;
+            }
+
             await this.paymentRepo.Add(paymentResponse);
 
             return paymentResponse.Status;

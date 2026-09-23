@@ -42,6 +42,7 @@ public class PaymentRequestValidatorTests
     [InlineData(9, 2026)]  // current month
     [InlineData(10, 2026)]
     [InlineData(1, 2027)]
+    [InlineData(12, 2046)] // 20 years ahead
     public void IsExpiryValid_CurrentOrFutureExpiry_ReturnsTrue(int month, int year)
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
@@ -56,24 +57,17 @@ public class PaymentRequestValidatorTests
     [InlineData(12, 2025)]
     [InlineData(0, 2027)]
     [InlineData(13, 2027)]
-    public void IsExpiryValid_PastExpiryOrInvalidMonth_ReturnsFalse(int month, int year)
+    [InlineData(1, 2047)]            // more than 20 years ahead
+    [InlineData(1, 0)]               // out of DateTime's range
+    [InlineData(1, -1)]
+    [InlineData(1, int.MaxValue)]
+    public void IsExpiryValid_PastOrOutOfRangeExpiryOrInvalidMonth_ReturnsFalse(int month, int year)
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
         payment.ExpiryMonth = month;
         payment.ExpiryYear = year;
 
         Assert.False(this.validator.IsExpiryValid(payment, Now));
-    }
-
-    [Fact]
-    public void IsExpiryValid_YearZero_Throws()
-    {
-        // NOTE: defect - an out of range year is not validated, so new DateTime(0, ...) throws
-        // instead of the payment being rejected
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.ExpiryYear = 0;
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => this.validator.IsExpiryValid(payment, Now));
     }
 
     [Theory]

@@ -16,6 +16,9 @@ public interface IPaymentRequestValidator
 
 public class PaymentRequestValidator : IPaymentRequestValidator
 {
+    // cards are issued with an expiry a few years out, anything further is a typo or garbage
+    private const int MaxExpiryYearsAhead = 20;
+
     private readonly ILogger<PaymentRequestValidator> logger;
 
     public PaymentRequestValidator(ILogger<PaymentRequestValidator> logger)
@@ -38,7 +41,6 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsExpiryValid(PaymentRequest payment, DateTime now)
     {
-        // most probably not needed, date should be already valid
         if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
         {
             this.logger.LogInformation(
@@ -48,8 +50,10 @@ public class PaymentRequestValidator : IPaymentRequestValidator
             return false;
         }
 
-        var expiry = new DateTime(payment.ExpiryYear, payment.ExpiryMonth, 1);
-        if (expiry < new DateTime(now.Year, now.Month, 1))
+        // compare year and month directly, building a DateTime would throw for an out of range year
+        bool isExpired = payment.ExpiryYear < now.Year || (payment.ExpiryYear == now.Year && payment.ExpiryMonth < now.Month);
+        bool isTooFarAhead = payment.ExpiryYear > now.Year + MaxExpiryYearsAhead;
+        if (isExpired || isTooFarAhead)
         {
             this.logger.LogInformation(
                 "Validator.IsExpiryValid, PaymentId={PaymentId}, IsValid={IsValid}",

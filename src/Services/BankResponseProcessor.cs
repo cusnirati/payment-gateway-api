@@ -10,7 +10,8 @@ namespace PaymentGatewayApi.Services;
 
 public interface IBankResponseProcessor
 {
-    Task<PostPaymentResponse> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response);
+    // null when the bank's body cannot be used, so no half-filled response is ever persisted
+    Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response);
 }
 
 public class BankResponseProcessor : IBankResponseProcessor
@@ -22,10 +23,9 @@ public class BankResponseProcessor : IBankResponseProcessor
         this.logger = logger;
     }
 
-    public async Task<PostPaymentResponse> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
+    public async Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
     {
         BankResponse? bankResponse;
-        PostPaymentResponse payResponse = new();
 
         try
         {
@@ -35,18 +35,17 @@ public class BankResponseProcessor : IBankResponseProcessor
         {
             this.logger.LogError(exception, "ParseBankResponse exception, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
 
-            payResponse.Status = PaymentStatus.InternalError;
-            return payResponse;
+            return null;
         }
 
         if (bankResponse is null)
         {
             this.logger.LogError("ParseBankResponse null response, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
 
-            payResponse.Status = PaymentStatus.InternalError;
-            return payResponse;
+            return null;
         }
 
+        PostPaymentResponse payResponse = new();
         payResponse.Status = bankResponse.Authorized ? PaymentStatus.Authorized : PaymentStatus.Declined;
         payResponse.CardNumberLastFour = request.CardNumber.Substring(request.CardNumber.Length - 4);
 

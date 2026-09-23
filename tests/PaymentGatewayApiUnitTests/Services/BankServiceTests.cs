@@ -68,17 +68,16 @@ public class BankServiceTests
     }
 
     [Fact]
-    public async Task ExecutePayment_BankBodyUnparseable_StillPersistsResponseWithoutPaymentId()
+    public async Task ExecutePayment_BankBodyUnparseable_ReturnsInternalErrorWithoutPersisting()
     {
-        // NOTE: defect - when the bank body cannot be parsed the processor returns a response with only
-        // Status set, and BankService persists it anyway, with a null PaymentId as the DynamoDB hash key
         PaymentRequest payment = TestData.ValidPaymentRequest();
-        PostPaymentResponse parsed = new() { Status = PaymentStatus.InternalError };
-        this.SetupBank(payment, HttpStatusCode.OK, parsed);
+        HttpResponseMessage bankResponse = new(HttpStatusCode.OK);
+        this.bankHttpClient.Setup(c => c.PostBankPayment(payment)).ReturnsAsync(bankResponse);
+        this.responseProcessor.Setup(p => p.ParseBankResponse(payment, bankResponse)).ReturnsAsync((PostPaymentResponse?)null);
 
         PaymentStatus result = await this.service.ExecutePayment(payment);
 
         Assert.Equal(PaymentStatus.InternalError, result);
-        this.paymentRepo.Verify(r => r.Add(It.Is<PostPaymentResponse>(p => p.PaymentId == null)), Times.Once);
+        this.paymentRepo.Verify(r => r.Add(It.IsAny<PostPaymentResponse>()), Times.Never);
     }
 }

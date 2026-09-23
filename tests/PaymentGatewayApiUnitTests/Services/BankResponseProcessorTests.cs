@@ -28,8 +28,9 @@ public class BankResponseProcessorTests
         using HttpResponseMessage response = JsonResponse(
             """{"authorized":true,"authorization_code":"0bb07405-6d44-4b50-a14f-7ae0beff13ad"}""");
 
-        PostPaymentResponse result = await this.processor.ParseBankResponse(request, response);
+        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response);
 
+        Assert.NotNull(result);
         Assert.Equal(PaymentStatus.Authorized, result.Status);
         Assert.Equal(TestData.PaymentId, result.PaymentId);
         Assert.Equal("8873", result.CardNumberLastFour);
@@ -45,8 +46,9 @@ public class BankResponseProcessorTests
         PaymentRequest request = TestData.ValidPaymentRequest();
         using HttpResponseMessage response = JsonResponse("""{"authorized":false,"authorization_code":""}""");
 
-        PostPaymentResponse result = await this.processor.ParseBankResponse(request, response);
+        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response);
 
+        Assert.NotNull(result);
         Assert.Equal(PaymentStatus.Declined, result.Status);
         Assert.Equal(TestData.PaymentId, result.PaymentId);
         Assert.Equal("8873", result.CardNumberLastFour);
@@ -56,15 +58,13 @@ public class BankResponseProcessorTests
     [InlineData("{not json")]
     [InlineData("null")]
     [InlineData("")]
-    public async Task ParseBankResponse_UnusableBody_ReturnsInternalError(string body)
+    public async Task ParseBankResponse_UnusableBody_ReturnsNull(string body)
     {
         PaymentRequest request = TestData.ValidPaymentRequest();
         using HttpResponseMessage response = JsonResponse(body);
 
-        PostPaymentResponse result = await this.processor.ParseBankResponse(request, response);
+        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response);
 
-        Assert.Equal(PaymentStatus.InternalError, result.Status);
-        Assert.Null(result.PaymentId);
-        Assert.Null(result.CardNumberLastFour);
+        Assert.Null(result);
     }
 }

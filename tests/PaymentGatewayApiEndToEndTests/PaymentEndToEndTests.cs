@@ -89,6 +89,7 @@ public class PaymentEndToEndTests
     [Theory]
     [InlineData("CardNumber")]
     [InlineData("Expiry")]
+    [InlineData("ExpiryYearZero")]
     [InlineData("Amount")]
     [InlineData("Currency")]
     [InlineData("Cvv")]
@@ -99,6 +100,7 @@ public class PaymentEndToEndTests
         {
             case "CardNumber": payment.CardNumber = "1234"; break;
             case "Expiry": payment.ExpiryYear = DateTime.Now.Year - 1; break;
+            case "ExpiryYearZero": payment.ExpiryYear = 0; break;
             case "Amount": payment.Amount = 0; break;
             case "Currency": payment.Currency = "GBPX"; break;
             case "Cvv": payment.Cvv = "12"; break;
@@ -107,19 +109,6 @@ public class PaymentEndToEndTests
         HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
 
         await AssertBadRequest(response, PaymentStatus.Rejected);
-    }
-
-    [Fact]
-    public async Task PostPayment_ExpiryYearZero_ReturnsInternalServerError()
-    {
-        // NOTE: defect - an out of range year is not validated, the validator throws and
-        // ErrorMiddleware answers 500 instead of the payment being rejected
-        PaymentRequest payment = TestData.ValidPaymentRequest(TestData.AuthorizedCard);
-        payment.ExpiryYear = 0;
-
-        HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
-
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
     }
 
     [Fact]
