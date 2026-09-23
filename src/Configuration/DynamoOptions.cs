@@ -8,4 +8,7 @@ public sealed class DynamoOptions
 
     [Required]
     public string PaymentsTable { get; set; } = null!;
+
+    [Required]
+    public string IdempotencyKeysTable { get; set; } = null!;
 }

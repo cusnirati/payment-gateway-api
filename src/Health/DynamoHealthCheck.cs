@@ -8,26 +8,31 @@ using PaymentGatewayApi.Configuration;
 
 namespace PaymentGatewayApi.Health;
 
-// ready means the payments table can be reached and is active (an exception, e.g. DynamoDB being
+// ready means both tables can be reached and are active (an exception, e.g. DynamoDB being
 // unreachable, is reported as unhealthy by the health check service); the bank has no
 // side-effect-free endpoint to probe, its outages are handled per request by the circuit breaker
 public class DynamoHealthCheck : IHealthCheck
 {
     private readonly IAmazonDynamoDB dynamo;
-    private readonly string tableName;
+    private readonly string[] tableNames;
 
     public DynamoHealthCheck(IAmazonDynamoDB dynamo, IOptions<DynamoOptions> options)
     {
         this.dynamo = dynamo;
-        this.tableName = options.Value.PaymentsTable;
+        this.tableNames = [options.Value.PaymentsTable, options.Value.IdempotencyKeysTable];
     }
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        DescribeTableResponse response = await this.dynamo.DescribeTableAsync(this.tableName, cancellationToken);
+        foreach (string tableName in this.tableNames)
+        {
+            DescribeTableResponse response = await this.dynamo.DescribeTableAsync(tableName, cancellationToken);
+            if (response.Table.TableStatus != TableStatus.ACTIVE)
+            {
+                return HealthCheckResult.Unhealthy($"Table {tableName} is {response.Table.TableStatus}.");
+            }
+        }
 
-        return response.Table.TableStatus == TableStatus.ACTIVE
-            ? HealthCheckResult.Healthy()
-            : HealthCheckResult.Unhealthy($"Table status is {response.Table.TableStatus}.");
+        return HealthCheckResult.Healthy();
     }
 }

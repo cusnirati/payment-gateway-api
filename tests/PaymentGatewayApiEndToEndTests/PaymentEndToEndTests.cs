@@ -24,6 +24,14 @@ public class PaymentEndToEndTests
         return this.client.PostAsJsonAsync("api/payments", payment, TestContext.Current.CancellationToken);
     }
 
+    private static async Task<HttpResponseMessage> Post(HttpClient caller, PaymentBody payment, string idempotencyKey)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Post, "api/payments") { Content = JsonContent.Create(payment) };
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+
+        return await caller.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
     private static async Task<JsonNode> ReadJson(HttpResponseMessage response)
     {
         JsonNode? json = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -202,5 +210,55 @@ public class PaymentEndToEndTests
 
         // indistinguishable from an id that does not exist, so ids cannot be probed
         await AssertProblem(response, HttpStatusCode.NotFound);
+    }
+
+    [Theory]
+    [InlineData(TestData.AuthorizedCard, HttpStatusCode.Created)]
+    [InlineData(TestData.BankUnavailableCard, HttpStatusCode.BadGateway)]
+    public async Task PostPayment_RepeatedIdempotencyKey_ReplaysTheFirstOutcome(string cardNumber, HttpStatusCode expected)
+    {
+        string key = Guid.NewGuid().ToString();
+        PaymentBody payment = TestData.ValidPayment(cardNumber);
+
+        HttpResponseMessage first = await Post(this.client, payment, key);
+        HttpResponseMessage second = await Post(this.client, payment, key);
+
+        Assert.Equal(expected, first.StatusCode);
+        Assert.Equal(expected, second.StatusCode);
+        Assert.False(first.Headers.Contains("Idempotent-Replayed"));
+        Assert.Equal(["true"], second.Headers.GetValues("Idempotent-Replayed"));
+
+        string idProperty = expected == HttpStatusCode.Created ? "id" : "paymentId";
+        Assert.Equal(
+            (await ReadJson(first))[idProperty]!.GetValue<string>(),
+            (await ReadJson(second))[idProperty]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task PostPayment_IdempotencyKeyReusedForADifferentPayment_UnprocessableEntity()
+    {
+        string key = Guid.NewGuid().ToString();
+        PaymentBody payment = TestData.ValidPayment(TestData.AuthorizedCard);
+        Assert.Equal(HttpStatusCode.Created, (await Post(this.client, payment, key)).StatusCode);
+
+        HttpResponseMessage response = await Post(this.client, payment with { Amount = payment.Amount + 1 }, key);
+
+        await AssertProblem(response, HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task PostPayment_SameIdempotencyKeyFromAnotherMerchant_IsIndependent()
+    {
+        string key = Guid.NewGuid().ToString();
+        PaymentBody payment = TestData.ValidPayment(TestData.AuthorizedCard);
+        using HttpClient merchantB = this.fixture.CreateClient(ApiFixture.MerchantBKey);
+
+        HttpResponseMessage fromA = await Post(this.client, payment, key);
+        HttpResponseMessage fromB = await Post(merchantB, payment, key);
+
+        Assert.Equal(HttpStatusCode.Created, fromA.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, fromB.StatusCode);
+        Assert.False(fromB.Headers.Contains("Idempotent-Replayed"));
+        Assert.NotEqual((await ReadJson(fromA))["id"]!.GetValue<string>(), (await ReadJson(fromB))["id"]!.GetValue<string>());
     }
 }

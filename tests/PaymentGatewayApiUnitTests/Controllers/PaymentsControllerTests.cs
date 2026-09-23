@@ -41,16 +41,28 @@ public class PaymentsControllerTests
         };
     }
 
-    private void SetupPayment(PaymentStatus status)
+    private void SetupAttempt(PaymentAttempt attempt)
     {
         this.paymentService
-            .Setup(s => s.ProcessPayment(TestData.MerchantId, It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TestData.Payment(status));
+            .Setup(s => s.ProcessPayment(TestData.MerchantId, It.IsAny<PaymentRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(attempt);
     }
 
-    private Task<ActionResult<PaymentResponse>> Post()
+    private void SetupPayment(PaymentStatus status)
     {
-        return this.controller.PostPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        this.SetupAttempt(new PaymentAttempt.Processed(TestData.Payment(status)));
+    }
+
+    private Task<ActionResult<PaymentResponse>> Post(string? idempotencyKey = null)
+    {
+        return this.controller.PostPayment(TestData.ValidPaymentRequest(), idempotencyKey, TestContext.Current.CancellationToken);
+    }
+
+    private void VerifyNeverProcessed()
+    {
+        this.paymentService.Verify(
+            s => s.ProcessPayment(It.IsAny<string>(), It.IsAny<PaymentRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -109,8 +121,56 @@ public class PaymentsControllerTests
         BadRequestObjectResult badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
         ValidationProblemDetails problem = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
         Assert.Equal(["Must be 3 or 4 digits."], problem.Errors["cvv"]);
-        this.paymentService.Verify(
-            s => s.ProcessPayment(It.IsAny<string>(), It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        this.VerifyNeverProcessed();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("has space")]
+    [InlineData("naïve")]
+    public async Task PostPayment_MalformedIdempotencyKey_ReturnsValidationProblemWithoutProcessing(string idempotencyKey)
+    {
+        ActionResult<PaymentResponse> result = await this.Post(idempotencyKey);
+
+        BadRequestObjectResult badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        ValidationProblemDetails problem = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
+        Assert.True(problem.Errors.ContainsKey("Idempotency-Key"));
+        this.VerifyNeverProcessed();
+    }
+
+    [Fact]
+    public async Task PostPayment_Replayed_ReturnsTheOriginalOutcomeMarkedAsReplayed()
+    {
+        this.SetupAttempt(new PaymentAttempt.Replayed(TestData.Payment(PaymentStatus.Authorized)));
+
+        ActionResult<PaymentResponse> result = await this.Post("order-42");
+
+        CreatedAtActionResult created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        Assert.Equal(TestData.PaymentId, Assert.IsType<PaymentResponse>(created.Value).Id);
+        Assert.Equal("true", this.controller.Response.Headers["Idempotent-Replayed"].ToString());
+    }
+
+    [Fact]
+    public async Task PostPayment_KeyStillInProgress_ReturnsConflictWithPaymentId()
+    {
+        this.SetupAttempt(new PaymentAttempt.InProgress(TestData.PaymentId));
+
+        ActionResult<PaymentResponse> result = await this.Post("order-42");
+
+        ObjectResult objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status409Conflict, objectResult.StatusCode);
+        Assert.Equal(TestData.PaymentId, Assert.IsType<ProblemDetails>(objectResult.Value).Extensions["paymentId"]);
+    }
+
+    [Fact]
+    public async Task PostPayment_KeyReused_ReturnsUnprocessableEntity()
+    {
+        this.SetupAttempt(new PaymentAttempt.KeyReused());
+
+        ActionResult<PaymentResponse> result = await this.Post("order-42");
+
+        ObjectResult objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status422UnprocessableEntity, objectResult.StatusCode);
     }
 
     [Theory]

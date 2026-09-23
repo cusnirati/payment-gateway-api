@@ -31,6 +31,20 @@ services:
         --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
         --table-class STANDARD > /dev/null 2>&1
 
+        aws dynamodb create-table \
+        --endpoint-url http://dynamodb:8000 \
+        --table-name PaymentIdempotencyKeys \
+        --attribute-definitions \
+            AttributeName=IdempotencyKey,AttributeType=S \
+        --key-schema AttributeName=IdempotencyKey,KeyType=HASH \
+        --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
+        --table-class STANDARD > /dev/null 2>&1
+
+        aws dynamodb update-time-to-live \
+        --endpoint-url http://dynamodb:8000 \
+        --table-name PaymentIdempotencyKeys \
+        --time-to-live-specification Enabled=true,AttributeName=ExpiresAt > /dev/null 2>&1
+
         echo "local dynamodb setup completed"
 
   # https://github.com/wiremock/wiremock

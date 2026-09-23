@@ -4,8 +4,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
+using PaymentGatewayApi.Configuration;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Services;
 using Xunit;
@@ -22,7 +24,17 @@ public class PaymentServiceTests
     public PaymentServiceTests()
     {
         this.service = new PaymentService(
-            NullLogger<PaymentService>.Instance, this.bankClient.Object, this.paymentRepo.Object, this.timeProvider);
+            NullLogger<PaymentService>.Instance,
+            this.bankClient.Object,
+            this.paymentRepo.Object,
+            this.timeProvider,
+            Options.Create(new PaymentOptions { SupportedCurrencies = ["GBP"], IdempotencyKeyRetention = TimeSpan.FromHours(24) }));
+    }
+
+    private async Task<Payment> Process(PaymentRequest request, CancellationToken cancellationToken)
+    {
+        PaymentAttempt attempt = await this.service.ProcessPayment(TestData.MerchantId, request, null, cancellationToken);
+        return Assert.IsType<PaymentAttempt.Processed>(attempt).Payment;
     }
 
     private void SetupBank(BankOutcome outcome)
@@ -49,7 +61,7 @@ public class PaymentServiceTests
             .Callback(() => calls.Add("bank"))
             .ReturnsAsync(BankOutcome.Declined);
 
-        await this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        await this.Process(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(["add", "bank"], calls);
         Assert.NotNull(added);
@@ -79,7 +91,7 @@ public class PaymentServiceTests
             .Callback(() => this.timeProvider.Advance(TimeSpan.FromSeconds(2)))
             .ReturnsAsync(outcome);
 
-        Payment result = await this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        Payment result = await this.Process(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(status, result.Status);
         Assert.Equal(outcome.AuthorizationCode, result.AuthorizationCode);
@@ -96,7 +108,7 @@ public class PaymentServiceTests
             .ThrowsAsync(new AmazonDynamoDBException("unavailable"));
 
         await Assert.ThrowsAsync<AmazonDynamoDBException>(
-            () => this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken));
+            () => this.Process(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken));
 
         this.bankClient.Verify(
             c => c.Authorize(It.IsAny<Guid>(), It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -110,7 +122,7 @@ public class PaymentServiceTests
             .Setup(r => r.Complete(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new AmazonDynamoDBException("unavailable"));
 
-        Payment result = await this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        Payment result = await this.Process(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(PaymentStatus.Authorized, result.Status);
     }
@@ -122,7 +134,7 @@ public class PaymentServiceTests
         await cancelled.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), cancelled.Token));
+            () => this.Process(TestData.ValidPaymentRequest(), cancelled.Token));
 
         this.bankClient.Verify(
             c => c.Authorize(It.IsAny<Guid>(), It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -133,7 +145,7 @@ public class PaymentServiceTests
     {
         this.SetupBank(BankOutcome.Declined);
 
-        await this.service.ProcessPayment(TestData.MerchantId, TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
+        await this.Process(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         this.bankClient.Verify(
             c => c.Authorize(It.IsAny<Guid>(), It.IsAny<PaymentRequest>(), CancellationToken.None), Times.Once);
@@ -160,5 +172,98 @@ public class PaymentServiceTests
         Payment? result = await this.service.FindPayment("merchant-b", TestData.PaymentId, TestContext.Current.CancellationToken);
 
         Assert.Null(result);
+    }
+
+    private void SetupIdempotencyKeyTaken(PaymentRequest firstRequest, Payment? firstPayment)
+    {
+        this.paymentRepo
+            .Setup(r => r.Add(It.IsAny<Payment>(), It.IsAny<IdempotencyRecord>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        this.paymentRepo
+            .Setup(r => r.FindIdempotencyRecord(TestData.MerchantId, "order-42", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IdempotencyRecord
+            {
+                MerchantId = TestData.MerchantId,
+                Key = "order-42",
+                PaymentId = TestData.PaymentId,
+                RequestFingerprint = IdempotencyRecord.Fingerprint(firstRequest),
+                CreatedAt = TestData.Now,
+                ExpiresAt = TestData.Now.AddDays(1)
+            });
+        this.paymentRepo.Setup(r => r.Find(TestData.PaymentId, It.IsAny<CancellationToken>())).ReturnsAsync(firstPayment);
+    }
+
+    private void VerifyBankNeverCalled()
+    {
+        this.bankClient.Verify(
+            c => c.Authorize(It.IsAny<Guid>(), It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessPayment_NewIdempotencyKey_StoresItWithThePaymentAndProcesses()
+    {
+        IdempotencyRecord? stored = null;
+        Payment? added = null;
+        this.paymentRepo
+            .Setup(r => r.Add(It.IsAny<Payment>(), It.IsAny<IdempotencyRecord>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment, IdempotencyRecord, CancellationToken>((payment, record, _) =>
+            {
+                added = payment;
+                stored = record;
+            })
+            .ReturnsAsync(true);
+        this.SetupBank(BankOutcome.Authorized("auth-code"));
+
+        PaymentAttempt attempt = await this.service.ProcessPayment(
+            TestData.MerchantId, TestData.ValidPaymentRequest(), "order-42", TestContext.Current.CancellationToken);
+
+        Payment payment = Assert.IsType<PaymentAttempt.Processed>(attempt).Payment;
+        Assert.Equal(PaymentStatus.Authorized, payment.Status);
+        Assert.NotNull(stored);
+        Assert.NotNull(added);
+        Assert.Equal("order-42", stored.Key);
+        Assert.Equal(TestData.MerchantId, stored.MerchantId);
+        Assert.Equal(added.Id, stored.PaymentId);
+        Assert.Equal(TestData.Now.AddHours(24), stored.ExpiresAt);
+        this.paymentRepo.Verify(r => r.Add(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessPayment_RepeatedKeyForACompletedPayment_ReplaysItWithoutCallingBank()
+    {
+        PaymentRequest request = TestData.ValidPaymentRequest();
+        Payment first = TestData.Payment(PaymentStatus.Declined);
+        this.SetupIdempotencyKeyTaken(request, first);
+
+        PaymentAttempt attempt = await this.service.ProcessPayment(
+            TestData.MerchantId, request, "order-42", TestContext.Current.CancellationToken);
+
+        Assert.Same(first, Assert.IsType<PaymentAttempt.Replayed>(attempt).Payment);
+        this.VerifyBankNeverCalled();
+    }
+
+    [Fact]
+    public async Task ProcessPayment_RepeatedKeyWhileTheFirstIsPending_IsInProgress()
+    {
+        PaymentRequest request = TestData.ValidPaymentRequest();
+        this.SetupIdempotencyKeyTaken(request, TestData.Payment(PaymentStatus.Pending));
+
+        PaymentAttempt attempt = await this.service.ProcessPayment(
+            TestData.MerchantId, request, "order-42", TestContext.Current.CancellationToken);
+
+        Assert.Equal(TestData.PaymentId, Assert.IsType<PaymentAttempt.InProgress>(attempt).PaymentId);
+        this.VerifyBankNeverCalled();
+    }
+
+    [Fact]
+    public async Task ProcessPayment_RepeatedKeyForADifferentRequest_IsKeyReused()
+    {
+        this.SetupIdempotencyKeyTaken(TestData.ValidPaymentRequest(), TestData.Payment(PaymentStatus.Authorized));
+
+        PaymentAttempt attempt = await this.service.ProcessPayment(
+            TestData.MerchantId, TestData.ValidPaymentRequest() with { Amount = 1 }, "order-42", TestContext.Current.CancellationToken);
+
+        Assert.IsType<PaymentAttempt.KeyReused>(attempt);
+        this.VerifyBankNeverCalled();
     }
 }

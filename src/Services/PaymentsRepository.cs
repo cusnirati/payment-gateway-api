@@ -16,6 +16,12 @@ public interface IPaymentsRepository
     // stores a new payment, failing if its id already exists
     Task Add(Payment payment, CancellationToken cancellationToken);
 
+    // stores a new payment and its idempotency key atomically; false, storing nothing, when the
+    // merchant's key is already held by an earlier payment
+    Task<bool> Add(Payment payment, IdempotencyRecord idempotency, CancellationToken cancellationToken);
+
+    Task<IdempotencyRecord?> FindIdempotencyRecord(string merchantId, string key, CancellationToken cancellationToken);
+
     // records the bank's outcome on a payment that is still pending
     Task Complete(Payment payment, CancellationToken cancellationToken);
 
@@ -23,16 +29,21 @@ public interface IPaymentsRepository
 }
 
 // one item per payment, keyed by PaymentId, with one attribute per field; the item is the storage
-// contract, kept apart from the public response so either can change without migrating the other
+// contract, kept apart from the public response so either can change without migrating the other.
+// Idempotency keys live in their own table, keyed by "{MerchantId}#{Key}" so merchants never collide.
 public class PaymentsRepository : IPaymentsRepository
 {
     private readonly IAmazonDynamoDB dynamo;
+    private readonly TimeProvider timeProvider;
     private readonly string tableName;
+    private readonly string idempotencyTableName;
 
-    public PaymentsRepository(IAmazonDynamoDB dynamo, IOptions<DynamoOptions> options)
+    public PaymentsRepository(IAmazonDynamoDB dynamo, TimeProvider timeProvider, IOptions<DynamoOptions> options)
     {
         this.dynamo = dynamo;
+        this.timeProvider = timeProvider;
         this.tableName = options.Value.PaymentsTable;
+        this.idempotencyTableName = options.Value.IdempotencyKeysTable;
     }
 
     public async Task Add(Payment payment, CancellationToken cancellationToken)
@@ -45,6 +56,66 @@ public class PaymentsRepository : IPaymentsRepository
         };
 
         await this.dynamo.PutItemAsync(request, cancellationToken);
+    }
+
+    public async Task<bool> Add(Payment payment, IdempotencyRecord idempotency, CancellationToken cancellationToken)
+    {
+        TransactWriteItemsRequest request = new()
+        {
+            TransactItems =
+            [
+                new TransactWriteItem
+                {
+                    Put = new Put
+                    {
+                        TableName = this.tableName,
+                        Item = ToItem(payment),
+                        ConditionExpression = "attribute_not_exists(PaymentId)"
+                    }
+                },
+                new TransactWriteItem
+                {
+                    Put = new Put
+                    {
+                        TableName = this.idempotencyTableName,
+                        Item = ToItem(idempotency),
+
+                        // an expired key may be taken again even before the TTL has deleted it
+                        ConditionExpression = "attribute_not_exists(IdempotencyKey) OR ExpiresAt < :now",
+                        ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                        {
+                            [":now"] = new AttributeValue { N = this.timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture) }
+                        }
+                    }
+                }
+            ]
+        };
+
+        try
+        {
+            await this.dynamo.TransactWriteItemsAsync(request, cancellationToken);
+            return true;
+        }
+        catch (TransactionCanceledException exception) when (exception.CancellationReasons is [_, { Code: "ConditionalCheckFailed" }])
+        {
+            return false;
+        }
+    }
+
+    public async Task<IdempotencyRecord?> FindIdempotencyRecord(string merchantId, string key, CancellationToken cancellationToken)
+    {
+        GetItemRequest request = new()
+        {
+            TableName = this.idempotencyTableName,
+            Key = new Dictionary<string, AttributeValue> { ["IdempotencyKey"] = new AttributeValue { S = IdempotencyItemKey(merchantId, key) } },
+
+            // read right after another request's write lost the race for the same key
+            ConsistentRead = true
+        };
+
+        GetItemResponse response = await this.dynamo.GetItemAsync(request, cancellationToken);
+
+        return response.Item is { Count: > 0 } item ? FromIdempotencyItem(item) : null;
     }
 
     public async Task Complete(Payment payment, CancellationToken cancellationToken)
@@ -100,6 +171,40 @@ public class PaymentsRepository : IPaymentsRepository
         }
 
         return item;
+    }
+
+    private static string IdempotencyItemKey(string merchantId, string key)
+    {
+        return $"{merchantId}#{key}";
+    }
+
+    private static Dictionary<string, AttributeValue> ToItem(IdempotencyRecord record)
+    {
+        return new Dictionary<string, AttributeValue>
+        {
+            ["IdempotencyKey"] = new AttributeValue { S = IdempotencyItemKey(record.MerchantId, record.Key) },
+            ["MerchantId"] = new AttributeValue { S = record.MerchantId },
+            ["Key"] = new AttributeValue { S = record.Key },
+            ["PaymentId"] = new AttributeValue { S = record.PaymentId.ToString() },
+            ["RequestFingerprint"] = new AttributeValue { S = record.RequestFingerprint },
+            ["CreatedAt"] = new AttributeValue { S = record.CreatedAt.ToString("O", CultureInfo.InvariantCulture) },
+
+            // epoch seconds, the format DynamoDB's TTL reads
+            ["ExpiresAt"] = new AttributeValue { N = record.ExpiresAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture) }
+        };
+    }
+
+    private static IdempotencyRecord FromIdempotencyItem(Dictionary<string, AttributeValue> item)
+    {
+        return new IdempotencyRecord
+        {
+            MerchantId = item["MerchantId"].S,
+            Key = item["Key"].S,
+            PaymentId = Guid.Parse(item["PaymentId"].S),
+            RequestFingerprint = item["RequestFingerprint"].S,
+            CreatedAt = DateTimeOffset.Parse(item["CreatedAt"].S, CultureInfo.InvariantCulture),
+            ExpiresAt = DateTimeOffset.FromUnixTimeSeconds(long.Parse(item["ExpiresAt"].N, CultureInfo.InvariantCulture))
+        };
     }
 
     private static Payment FromItem(Dictionary<string, AttributeValue> item)

@@ -53,6 +53,9 @@ items:
       method: POST
       url: http://localhost:5067/api/payments
       headers:
+        - name: Idempotency-Key
+          value: bruno-order-1
+          disabled: true
         - name: X-Api-Key
           value: dev-key-merchant-a
         - name: Content-Type

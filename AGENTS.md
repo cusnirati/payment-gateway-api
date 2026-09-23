@@ -111,6 +111,9 @@ to the merchant that created it; another merchant's `GET` is a `404`, like a mis
 | `GET` of an unknown id, or another merchant's | `404` `ProblemDetails` |
 | missing or unknown API key | `401` `ProblemDetails`, `WWW-Authenticate: ApiKey` |
 | rate limit exceeded | `429` `ProblemDetails` with `Retry-After` |
+| repeated `Idempotency-Key`, same request | the first request's response, plus `Idempotent-Replayed: true` |
+| repeated `Idempotency-Key`, first still `Pending` | `409` `ProblemDetails` with `paymentId` |
+| repeated `Idempotency-Key`, different request | `422` `ProblemDetails` |
 | unhandled exception | `500` `ProblemDetails` (`GlobalExceptionHandler`), never the exception message |
 
 Amounts are integers in the currency's minor unit (`1050` is £10.50), currencies come from
@@ -128,9 +131,18 @@ bank's, or our storage to either.
 ### Persistence
 
 DynamoDB table `Payments`, hash key `PaymentId`. Each item has one attribute per `Payment`
-field (`Status` as its name, timestamps as ISO 8601, `AuthorizationCode` only once
-authorized); only the last four card digits are ever stored. The mapping lives in
+field (`MerchantId`, `Status` as its name, timestamps as ISO 8601, `AuthorizationCode` only
+once authorized); only the last four card digits are ever stored. The mapping lives in
 `PaymentsRepository.ToItem` / `FromItem`.
+
+Table `PaymentIdempotencyKeys`, hash key `IdempotencyKey` = `"{MerchantId}#{Key}"`, holds
+`PaymentId`, a `RequestFingerprint` and `ExpiresAt` (epoch seconds, the TTL attribute;
+`Payments:IdempotencyKeyRetention`, 24h). With an `Idempotency-Key`, the pending payment and
+the key are written in one `TransactWriteItems`, so of two concurrent requests with the same
+key exactly one reaches the bank. The fingerprint hashes the last four digits, expiry,
+currency and amount: never the CVV or the full card number, which PCI DSS forbids keeping
+under an unkeyed hash. The compose init script creates both tables; after pulling a schema
+change, recreate local data with `docker compose down` then `up`.
 
 ### Wiring
 
