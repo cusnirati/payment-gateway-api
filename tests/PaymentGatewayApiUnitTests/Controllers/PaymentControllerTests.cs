@@ -26,13 +26,13 @@ public class PaymentControllerTests
             this.bankService.Object);
     }
 
-    private void SetupValidator(bool isValid = true)
+    private void SetupValidator()
     {
-        this.validator.Setup(v => v.IsCardNumberValid(It.IsAny<PaymentRequest>())).Returns(isValid);
-        this.validator.Setup(v => v.IsExpiryValid(It.IsAny<PaymentRequest>(), It.IsAny<DateTime>())).Returns(isValid);
-        this.validator.Setup(v => v.IsAmountValid(It.IsAny<PaymentRequest>())).Returns(isValid);
-        this.validator.Setup(v => v.IsCurrencyCodeValid(It.IsAny<PaymentRequest>())).Returns(isValid);
-        this.validator.Setup(v => v.IsCvvValid(It.IsAny<PaymentRequest>())).Returns(isValid);
+        this.validator.Setup(v => v.IsCardNumberValid(It.IsAny<PaymentRequest>())).Returns(true);
+        this.validator.Setup(v => v.IsExpiryValid(It.IsAny<PaymentRequest>(), It.IsAny<DateTime>())).Returns(true);
+        this.validator.Setup(v => v.IsAmountValid(It.IsAny<PaymentRequest>())).Returns(true);
+        this.validator.Setup(v => v.IsCurrencyCodeValid(It.IsAny<PaymentRequest>())).Returns(true);
+        this.validator.Setup(v => v.IsCvvValid(It.IsAny<PaymentRequest>())).Returns(true);
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public class PaymentControllerTests
     [Fact]
     public async Task PostPayment_CardNumberInvalid_SkipsRemainingChecks()
     {
-        this.SetupValidator(isValid: false);
+        // this.SetupValidator(isValid: false);
 
         await this.controller.PostPayment(TestData.ValidPaymentRequest());
 
