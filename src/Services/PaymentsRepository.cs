@@ -17,7 +17,6 @@ public interface IPaymentsRepository
     Task<PostPaymentResponse?> Get(string paymentId);
 }
 
-// todo add try catch for all possible scenarios
 public class PaymentsRepository : IPaymentsRepository
 {
     private readonly ILogger<PaymentsRepository> logger;
@@ -36,7 +35,20 @@ public class PaymentsRepository : IPaymentsRepository
             ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
         };
-        PutItemResponse response = await this.dynamo.PutItemAsync("Payments", item);
+
+        try
+        {
+            await this.dynamo.PutItemAsync("Payments", item);
+        }
+        catch (Exception exception)
+        {
+            // the bank has already answered, so failing the request here would hide an authorized payment
+            // from the merchant; log the raw item instead so it can be reconciled
+            this.logger.LogError(
+                exception,
+                "AddPayment, PaymentId={PaymentId}, Status={Status}, PaymentRaw={PaymentRaw}",
+                payment.PaymentId, "Failed", item["PaymentRaw"].S);
+        }
     }
 
     public async Task<PostPaymentResponse?> Get(string paymentId)
@@ -47,14 +59,31 @@ public class PaymentsRepository : IPaymentsRepository
         };
 
         GetItemRequest request = new() { Key = key, TableName = "Payments" };
-        GetItemResponse response = await this.dynamo.GetItemAsync(request);
 
         PostPaymentResponse? payment;
-        if (response.Item != null && response.Item.Any())
+        try
         {
-            string raw = response.Item["PaymentRaw"].S;
-            payment = JsonSerializer.Deserialize<PostPaymentResponse>(raw);
+            GetItemResponse response = await this.dynamo.GetItemAsync(request);
 
+            if (response.Item != null && response.Item.Any())
+            {
+                string raw = response.Item["PaymentRaw"].S;
+                payment = JsonSerializer.Deserialize<PostPaymentResponse>(raw);
+            }
+            else
+            {
+                payment = null;
+            }
+        }
+        catch (Exception exception)
+        {
+            // rethrow so ErrorMiddleware answers 500: returning null would report an unreadable payment as not found
+            this.logger.LogError(exception, "GetPayment, PaymentId={PaymentId}, Status={Status}", paymentId, "Failed");
+            throw;
+        }
+
+        if (payment is not null)
+        {
             return payment;
         }
         else
