@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -45,8 +46,19 @@ public class BankHttpClient : IBankHttpClient
         string uri = this.config["SimulatorBankEndpoint"] ?? string.Empty;
         HttpClient client = this.httpFactory.CreateClient();
 
-        // todo try catch
-        HttpResponseMessage response = await client.PostAsJsonAsync(uri, request);
+        HttpResponseMessage response;
+        try
+        {
+            response = await client.PostAsJsonAsync(uri, request);
+        }
+        catch (Exception exception)
+        {
+            // bank unreachable, timed out, or circuit open once the resilience handler gave up;
+            // answer as the bank would when unavailable so BankService maps it to InternalError
+            this.logger.LogError(exception, "PostBankPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Failed");
+
+            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+        }
 
         this.logger.LogInformation(
             "PostBankPayment, PaymentId={PaymentId}, StatusCode={StatusCode}",
