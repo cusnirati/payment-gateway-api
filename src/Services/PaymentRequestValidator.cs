@@ -8,7 +8,7 @@ namespace PaymentGatewayApi.Services;
 public interface IPaymentRequestValidator
 {
     bool IsCardNumberValid(PaymentRequest payment);
-    bool IsExpiryValid(PaymentRequest payment, DateTime now);
+    bool IsExpiryValid(PaymentRequest payment);
     bool IsAmountValid(PaymentRequest payment);
     bool IsCurrencyCodeValid(PaymentRequest payment);
     bool IsCvvValid(PaymentRequest payment);
@@ -20,10 +20,12 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
     private const int MaxExpiryYearsAhead = 20;
 
     private readonly ILogger<PaymentRequestValidator> logger;
+    private readonly TimeProvider timeProvider;
 
-    public PaymentRequestValidator(ILogger<PaymentRequestValidator> logger)
+    public PaymentRequestValidator(ILogger<PaymentRequestValidator> logger, TimeProvider timeProvider)
     {
         this.logger = logger;
+        this.timeProvider = timeProvider;
     }
 
     public bool IsCardNumberValid(PaymentRequest payment)
@@ -37,8 +39,11 @@ public partial class PaymentRequestValidator : IPaymentRequestValidator
         return true;
     }
 
-    public bool IsExpiryValid(PaymentRequest payment, DateTime now)
+    public bool IsExpiryValid(PaymentRequest payment)
     {
+        // UTC, not the server's local time zone; a card is valid through the last day of its expiry month
+        DateTimeOffset now = this.timeProvider.GetUtcNow();
+
         if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
         {
             this.LogRejected(payment.PaymentId, "Rejected", "IsExpiryMonthValid");

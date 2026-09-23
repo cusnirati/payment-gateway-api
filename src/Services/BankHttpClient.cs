@@ -2,8 +2,8 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
 
@@ -11,21 +11,18 @@ namespace PaymentGatewayApi.Services;
 
 public interface IBankHttpClient
 {
-    Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment);
+    Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment, CancellationToken cancellationToken);
 }
-
-
 
 public partial class BankHttpClient : IBankHttpClient
 {
     private readonly ILogger<BankHttpClient> logger;
-    private readonly IConfiguration config;
     private readonly HttpClient client;
 
-    public BankHttpClient(ILogger<BankHttpClient> logger, IConfiguration config, HttpClient client)
+    // the base address comes from BankOptions, set where the typed client is registered
+    public BankHttpClient(ILogger<BankHttpClient> logger, HttpClient client)
     {
         this.logger = logger;
-        this.config = config;
         this.client = client;
     }
 
@@ -42,15 +39,14 @@ public partial class BankHttpClient : IBankHttpClient
         };
     }
 
-    public async Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment)
+    public async Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment, CancellationToken cancellationToken)
     {
         BankRequest request = ToBankRequest(payment);
-        string uri = this.config["SimulatorBankEndpoint"] ?? string.Empty;
 
         HttpResponseMessage response;
         try
         {
-            response = await this.client.PostAsJsonAsync(uri, request);
+            response = await this.client.PostAsJsonAsync(new Uri("payments", UriKind.Relative), request, cancellationToken);
         }
         catch (Exception exception)
         {

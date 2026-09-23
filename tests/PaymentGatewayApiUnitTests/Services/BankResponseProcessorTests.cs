@@ -28,7 +28,7 @@ public class BankResponseProcessorTests
         using HttpResponseMessage response = JsonResponse(
             """{"authorized":true,"authorization_code":"0bb07405-6d44-4b50-a14f-7ae0beff13ad"}""");
 
-        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response);
+        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(PaymentStatus.Authorized, result.Status);
@@ -46,7 +46,7 @@ public class BankResponseProcessorTests
         PaymentRequest request = TestData.ValidPaymentRequest();
         using HttpResponseMessage response = JsonResponse("""{"authorized":false,"authorization_code":""}""");
 
-        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response);
+        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(PaymentStatus.Declined, result.Status);
@@ -63,7 +63,7 @@ public class BankResponseProcessorTests
         PaymentRequest request = TestData.ValidPaymentRequest();
         using HttpResponseMessage response = JsonResponse(body);
 
-        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response);
+        PostPaymentResponse? result = await this.processor.ParseBankResponse(request, response, TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }

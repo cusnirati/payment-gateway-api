@@ -136,6 +136,8 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`
   header gets a generated GUID), so never pass them by hand.
 - **Serilog is configured from `src/logconfig.json`, not `appsettings.json`.**
-  `appsettings.json` holds `SimulatorBankEndpoint` and the `AWS` block (pointed at
-  `http://localhost:8000` for DynamoDB Local). Verbose file logs go to `src/z-logs/`
+  Settings bind to validated options classes in `Configuration/` (`Bank`, `Dynamo`),
+  checked at startup. Local-only values (the simulator URL, `AWS:ServiceURL` pointed at
+  DynamoDB Local) live in `appsettings.Development.json`; the compose file sets them for
+  the container through environment variables. Verbose file logs go to `src/z-logs/`
   (gitignored); the console sink is deliberately terse.

@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
@@ -7,7 +8,7 @@ namespace PaymentGatewayApi.Services;
 
 public interface IBankService
 {
-    Task<PaymentStatus> ExecutePayment(PaymentRequest payment);
+    Task<PaymentStatus> ExecutePayment(PaymentRequest payment, CancellationToken cancellationToken);
 }
 
 public partial class BankService : IBankService
@@ -26,14 +27,19 @@ public partial class BankService : IBankService
         this.paymentRepo = paymentRepo;
     }
 
-    public async Task<PaymentStatus> ExecutePayment(PaymentRequest payment)
+    public async Task<PaymentStatus> ExecutePayment(PaymentRequest payment, CancellationToken cancellationToken)
     {
         this.LogExecutePayment(payment.PaymentId, "Started");
 
-        HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(payment);
+        // a client that disconnects can still stop the payment before the bank is called; once it is,
+        // cancelling would leave the bank's outcome unknown, so the bank call and the write that
+        // records its answer run to completion (bounded by the resilience handler's timeouts)
+        cancellationToken.ThrowIfCancellationRequested();
+
+        HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(payment, CancellationToken.None);
         if (bankResponse.IsSuccessStatusCode)
         {
-            PostPaymentResponse? paymentResponse = await this.responseProcessor.ParseBankResponse(payment, bankResponse);
+            PostPaymentResponse? paymentResponse = await this.responseProcessor.ParseBankResponse(payment, bankResponse, CancellationToken.None);
             if (paymentResponse is null)
             {
                 // the bank answered 2xx but its body is unusable, so the outcome is unknown and there is nothing to persist
@@ -41,7 +47,7 @@ public partial class BankService : IBankService
                 return PaymentStatus.InternalError;
             }
 
-            await this.paymentRepo.Add(paymentResponse);
+            await this.paymentRepo.Add(paymentResponse, CancellationToken.None);
 
             return paymentResponse.Status;
         }

@@ -1,32 +1,37 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PaymentGatewayApi.Configuration;
 using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 
 public interface IPaymentsRepository
 {
-    Task Add(PostPaymentResponse payment);
-    Task<PostPaymentResponse?> Find(string paymentId);
+    Task Add(PostPaymentResponse payment, CancellationToken cancellationToken);
+    Task<PostPaymentResponse?> Find(string paymentId, CancellationToken cancellationToken);
 }
 
 public partial class PaymentsRepository : IPaymentsRepository
 {
     private readonly ILogger<PaymentsRepository> logger;
     private readonly IAmazonDynamoDB dynamo;
+    private readonly string tableName;
 
-    public PaymentsRepository(ILogger<PaymentsRepository> logger, IAmazonDynamoDB dynamo)
+    public PaymentsRepository(ILogger<PaymentsRepository> logger, IAmazonDynamoDB dynamo, IOptions<DynamoOptions> options)
     {
         this.logger = logger;
         this.dynamo = dynamo;
+        this.tableName = options.Value.PaymentsTable;
     }
 
-    public async Task Add(PostPaymentResponse payment)
+    public async Task Add(PostPaymentResponse payment, CancellationToken cancellationToken)
     {
         var item = new Dictionary<string, AttributeValue>
         {
@@ -36,7 +41,7 @@ public partial class PaymentsRepository : IPaymentsRepository
 
         try
         {
-            await this.dynamo.PutItemAsync("Payments", item);
+            await this.dynamo.PutItemAsync(this.tableName, item, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -46,19 +51,19 @@ public partial class PaymentsRepository : IPaymentsRepository
         }
     }
 
-    public async Task<PostPaymentResponse?> Find(string paymentId)
+    public async Task<PostPaymentResponse?> Find(string paymentId, CancellationToken cancellationToken)
     {
         var key = new Dictionary<string, AttributeValue>
         {
             ["PaymentId"] = new AttributeValue { S = paymentId }
         };
 
-        GetItemRequest request = new() { Key = key, TableName = "Payments" };
+        GetItemRequest request = new() { Key = key, TableName = this.tableName };
 
         PostPaymentResponse? payment;
         try
         {
-            GetItemResponse response = await this.dynamo.GetItemAsync(request);
+            GetItemResponse response = await this.dynamo.GetItemAsync(request, cancellationToken);
 
             if (response.Item is { Count: > 0 })
             {

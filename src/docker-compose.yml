@@ -59,7 +59,7 @@ services:
     ports:
       - "5067:8080"
     environment:
-      SimulatorBankEndpoint: "http://bank-simulator-wiremock:8080/payments"
+      Bank__BaseUrl: "http://bank-simulator-wiremock:8080/"
       AWS__ServiceURL: "http://dynamodb:8000"
       AWS_ACCESS_KEY_ID: "dummy"
       AWS_SECRET_ACCESS_KEY: "dummy"

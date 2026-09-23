@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -36,11 +37,11 @@ public partial class PaymentController : ControllerBase
 
     // curl -k http://localhost:5067/api/payment/16bd4749-d150-48d1-a3ce-257457d74d1f
     [HttpGet("{paymentId}")]
-    public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId)
+    public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId, CancellationToken cancellationToken)
     {
         this.LogGetPayment(paymentId, "Started");
 
-        var payment = await this.paymentRepo.Find(paymentId);
+        var payment = await this.paymentRepo.Find(paymentId, cancellationToken);
         if (payment is null)
         {
             return new NotFoundObjectResult("payment not found");
@@ -50,14 +51,14 @@ public partial class PaymentController : ControllerBase
     }
 
     [HttpPost()]
-    public async Task<ActionResult<PaymentStatus>> PostPayment([FromBody] PaymentRequest payment)
+    public async Task<ActionResult<PaymentStatus>> PostPayment([FromBody] PaymentRequest payment, CancellationToken cancellationToken)
     {
         payment.PaymentId = Guid.NewGuid().ToString();
         this.LogPostPayment(payment.PaymentId, "Started");
 
         bool isValid =
             this.validator.IsCardNumberValid(payment) &&
-            this.validator.IsExpiryValid(payment, DateTime.Now) &&
+            this.validator.IsExpiryValid(payment) &&
             this.validator.IsAmountValid(payment) &&
             this.validator.IsCurrencyCodeValid(payment) &&
             this.validator.IsCvvValid(payment);
@@ -69,7 +70,7 @@ public partial class PaymentController : ControllerBase
 
         // good place to split into a separate service if validation would include fraud detection, sanction screening, etc
 
-        var status = await this.bankService.ExecutePayment(payment);
+        var status = await this.bankService.ExecutePayment(payment, cancellationToken);
         if (status == PaymentStatus.Authorized)
         {
             return new OkObjectResult(payment.PaymentId);

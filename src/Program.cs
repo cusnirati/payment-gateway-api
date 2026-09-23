@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Options;
+using PaymentGatewayApi.Configuration;
 using PaymentGatewayApi.Middleware;
 using PaymentGatewayApi.Services;
 using Serilog;
@@ -16,10 +18,24 @@ builder.Host.UseSerilog(log);
 
 builder.Services.AddControllers();
 
+// a missing or malformed setting fails the startup, not the first request that needs it
+builder.Services.AddOptions<BankOptions>()
+    .BindConfiguration(BankOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddOptions<DynamoOptions>()
+    .BindConfiguration(DynamoOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton(TimeProvider.System);
+
 // a payment POST is not idempotent, a retry after a lost response could charge the card twice;
-// keep the timeouts and circuit breaker, but never retry it
-builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>()
-    .AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods());
+// keep the timeouts and circuit breaker (tunable under Bank:Resilience), but never retry it
+builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>((services, client) =>
+        client.BaseAddress = services.GetRequiredService<IOptions<BankOptions>>().Value.BaseUrl)
+    .AddStandardResilienceHandler(builder.Configuration.GetSection("Bank:Resilience"))
+    .Configure(options => options.Retry.DisableForUnsafeHttpMethods());
 
 var awsOptions = builder.Configuration.GetAWSOptions();
 awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);

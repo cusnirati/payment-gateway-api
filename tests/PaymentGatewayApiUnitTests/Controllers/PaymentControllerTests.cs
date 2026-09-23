@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,7 +30,7 @@ public class PaymentControllerTests
     private void SetupValidator()
     {
         this.validator.Setup(v => v.IsCardNumberValid(It.IsAny<PaymentRequest>())).Returns(true);
-        this.validator.Setup(v => v.IsExpiryValid(It.IsAny<PaymentRequest>(), It.IsAny<DateTime>())).Returns(true);
+        this.validator.Setup(v => v.IsExpiryValid(It.IsAny<PaymentRequest>())).Returns(true);
         this.validator.Setup(v => v.IsAmountValid(It.IsAny<PaymentRequest>())).Returns(true);
         this.validator.Setup(v => v.IsCurrencyCodeValid(It.IsAny<PaymentRequest>())).Returns(true);
         this.validator.Setup(v => v.IsCvvValid(It.IsAny<PaymentRequest>())).Returns(true);
@@ -48,9 +49,9 @@ public class PaymentControllerTests
     public async Task GetPayment_Found_ReturnsOkWithPayment()
     {
         PostPaymentResponse payment = new() { PaymentId = TestData.PaymentId, Status = PaymentStatus.Authorized };
-        this.paymentRepo.Setup(r => r.Find(TestData.PaymentId)).ReturnsAsync(payment);
+        this.paymentRepo.Setup(r => r.Find(TestData.PaymentId, It.IsAny<CancellationToken>())).ReturnsAsync(payment);
 
-        ActionResult<PostPaymentResponse> result = await this.controller.GetPayment(TestData.PaymentId);
+        ActionResult<PostPaymentResponse> result = await this.controller.GetPayment(TestData.PaymentId, TestContext.Current.CancellationToken);
 
         OkObjectResult ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.Same(payment, ok.Value);
@@ -59,9 +60,9 @@ public class PaymentControllerTests
     [Fact]
     public async Task GetPayment_Missing_ReturnsNotFound()
     {
-        this.paymentRepo.Setup(r => r.Find(It.IsAny<string>())).ReturnsAsync((PostPaymentResponse?)null);
+        this.paymentRepo.Setup(r => r.Find(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((PostPaymentResponse?)null);
 
-        ActionResult<PostPaymentResponse> result = await this.controller.GetPayment(TestData.PaymentId);
+        ActionResult<PostPaymentResponse> result = await this.controller.GetPayment(TestData.PaymentId, TestContext.Current.CancellationToken);
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
     }
@@ -71,9 +72,9 @@ public class PaymentControllerTests
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
         this.SetupValidator();
-        this.bankService.Setup(b => b.ExecutePayment(payment)).ReturnsAsync(PaymentStatus.Authorized);
+        this.bankService.Setup(b => b.ExecutePayment(payment, It.IsAny<CancellationToken>())).ReturnsAsync(PaymentStatus.Authorized);
 
-        ActionResult<PaymentStatus> result = await this.controller.PostPayment(payment);
+        ActionResult<PaymentStatus> result = await this.controller.PostPayment(payment, TestContext.Current.CancellationToken);
 
         OkObjectResult ok = Assert.IsType<OkObjectResult>(result.Result);
         string paymentId = Assert.IsType<string>(ok.Value);
@@ -86,12 +87,12 @@ public class PaymentControllerTests
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
         this.SetupValidator();
-        this.bankService.Setup(b => b.ExecutePayment(payment)).ReturnsAsync(PaymentStatus.Authorized);
+        this.bankService.Setup(b => b.ExecutePayment(payment, It.IsAny<CancellationToken>())).ReturnsAsync(PaymentStatus.Authorized);
 
-        await this.controller.PostPayment(payment);
+        await this.controller.PostPayment(payment, TestContext.Current.CancellationToken);
 
         Assert.NotEqual(TestData.PaymentId, payment.PaymentId);
-        this.bankService.Verify(b => b.ExecutePayment(It.Is<PaymentRequest>(p => p.PaymentId != TestData.PaymentId)), Times.Once);
+        this.bankService.Verify(b => b.ExecutePayment(It.Is<PaymentRequest>(p => p.PaymentId != TestData.PaymentId), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Theory]
@@ -109,7 +110,7 @@ public class PaymentControllerTests
                 this.validator.Setup(v => v.IsCardNumberValid(It.IsAny<PaymentRequest>())).Returns(false);
                 break;
             case nameof(IPaymentRequestValidator.IsExpiryValid):
-                this.validator.Setup(v => v.IsExpiryValid(It.IsAny<PaymentRequest>(), It.IsAny<DateTime>())).Returns(false);
+                this.validator.Setup(v => v.IsExpiryValid(It.IsAny<PaymentRequest>())).Returns(false);
                 break;
             case nameof(IPaymentRequestValidator.IsAmountValid):
                 this.validator.Setup(v => v.IsAmountValid(It.IsAny<PaymentRequest>())).Returns(false);
@@ -122,11 +123,11 @@ public class PaymentControllerTests
                 break;
         }
 
-        ActionResult<PaymentStatus> result = await this.controller.PostPayment(TestData.ValidPaymentRequest());
+        ActionResult<PaymentStatus> result = await this.controller.PostPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         BadRequestObjectResult badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal(nameof(PaymentStatus.Rejected), badRequest.Value);
-        this.bankService.Verify(b => b.ExecutePayment(It.IsAny<PaymentRequest>()), Times.Never);
+        this.bankService.Verify(b => b.ExecutePayment(It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -134,10 +135,10 @@ public class PaymentControllerTests
     {
         // this.SetupValidator(isValid: false);
 
-        await this.controller.PostPayment(TestData.ValidPaymentRequest());
+        await this.controller.PostPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         this.validator.Verify(v => v.IsCardNumberValid(It.IsAny<PaymentRequest>()), Times.Once);
-        this.validator.Verify(v => v.IsExpiryValid(It.IsAny<PaymentRequest>(), It.IsAny<DateTime>()), Times.Never);
+        this.validator.Verify(v => v.IsExpiryValid(It.IsAny<PaymentRequest>()), Times.Never);
         this.validator.Verify(v => v.IsAmountValid(It.IsAny<PaymentRequest>()), Times.Never);
         this.validator.Verify(v => v.IsCurrencyCodeValid(It.IsAny<PaymentRequest>()), Times.Never);
         this.validator.Verify(v => v.IsCvvValid(It.IsAny<PaymentRequest>()), Times.Never);
@@ -149,9 +150,9 @@ public class PaymentControllerTests
     public async Task PostPayment_NotAuthorized_ReturnsBadRequestWithStatus(PaymentStatus status)
     {
         this.SetupValidator();
-        this.bankService.Setup(b => b.ExecutePayment(It.IsAny<PaymentRequest>())).ReturnsAsync(status);
+        this.bankService.Setup(b => b.ExecutePayment(It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(status);
 
-        ActionResult<PaymentStatus> result = await this.controller.PostPayment(TestData.ValidPaymentRequest());
+        ActionResult<PaymentStatus> result = await this.controller.PostPayment(TestData.ValidPaymentRequest(), TestContext.Current.CancellationToken);
 
         BadRequestObjectResult badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal(status.ToString(), badRequest.Value);

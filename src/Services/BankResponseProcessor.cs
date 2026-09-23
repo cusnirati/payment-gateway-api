@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
@@ -10,7 +11,7 @@ namespace PaymentGatewayApi.Services;
 public interface IBankResponseProcessor
 {
     // null when the bank's body cannot be used, so no half-filled response is ever persisted
-    Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response);
+    Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response, CancellationToken cancellationToken);
 }
 
 public partial class BankResponseProcessor : IBankResponseProcessor
@@ -22,13 +23,13 @@ public partial class BankResponseProcessor : IBankResponseProcessor
         this.logger = logger;
     }
 
-    public async Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response)
+    public async Task<PostPaymentResponse?> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response, CancellationToken cancellationToken)
     {
         BankResponse? bankResponse;
 
         try
         {
-            bankResponse = await response.Content.ReadFromJsonAsync<BankResponse>();
+            bankResponse = await response.Content.ReadFromJsonAsync<BankResponse>(cancellationToken);
         }
         catch (Exception exception)
         {

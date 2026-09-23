@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Services;
 using Xunit;
@@ -8,9 +9,8 @@ namespace PaymentGatewayApiUnitTests.Services;
 
 public class PaymentRequestValidatorTests
 {
-    private static readonly DateTime Now = new(2026, 9, 15);
-
-    private readonly PaymentRequestValidator validator = new(NullLogger<PaymentRequestValidator>.Instance);
+    private readonly PaymentRequestValidator validator = new(
+        NullLogger<PaymentRequestValidator>.Instance, new FakeTimeProvider(new DateTimeOffset(2026, 9, 15, 12, 0, 0, TimeSpan.Zero)));
 
     [Theory]
     [InlineData("22224053432488")]      // 14 digits
@@ -49,7 +49,7 @@ public class PaymentRequestValidatorTests
         payment.ExpiryMonth = month;
         payment.ExpiryYear = year;
 
-        Assert.True(this.validator.IsExpiryValid(payment, Now));
+        Assert.True(this.validator.IsExpiryValid(payment));
     }
 
     [Theory]
@@ -67,7 +67,7 @@ public class PaymentRequestValidatorTests
         payment.ExpiryMonth = month;
         payment.ExpiryYear = year;
 
-        Assert.False(this.validator.IsExpiryValid(payment, Now));
+        Assert.False(this.validator.IsExpiryValid(payment));
     }
 
     [Theory]
