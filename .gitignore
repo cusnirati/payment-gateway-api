@@ -7,6 +7,4 @@ obj/
 
 src/z-logs/*.log
 
-deploy/aws/*
-!deploy/aws/.gitkeep
 TestResults/

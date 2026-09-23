@@ -1,6 +1,7 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for coding agents (and people) working in this repository. `README.md` is the
+overview for humans: what the gateway does, its API and its design decisions.
 
 ## Commands
 
@@ -11,9 +12,12 @@ The API cannot run without its two local dependencies. Start them first, **from 
 cd src && docker compose up -d
 ```
 
-That brings up DynamoDB Local on `:8000`, creates the `Payments` table, and starts the
-WireMock acquiring-bank simulator on `:8080`. Add `--profile api` to also build and run the
-API container on `:5067` (don't combine it with `dotnet run`, they share the port).
+That brings up DynamoDB Local on `:8000`, creates the `Payments` and `PaymentIdempotencyKeys`
+tables, and starts the WireMock acquiring-bank simulator on `:8080`. Add `--profile api` to
+also build and run the API container on `:5067` (don't combine it with `dotnet run`, they
+share the port). `dotnet run` needs some AWS credentials in the environment
+(`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, any value): DynamoDB Local ignores them, but
+the SDK refuses to sign without them. The compose file sets dummy ones for the container.
 
 ```bash
 dotnet build PaymentGatewayApi.slnx                  # from repo root
@@ -23,7 +27,7 @@ docker build -f src/Dockerfile -t payment-gateway-api .   # container image, fro
 
 `dotnet run` sets the working directory to `src/`, which is what makes the Development
 `z-logs/` output path resolve. `/health/live` answers when the process is up, `/health/ready`
-also checks that the payments table is reachable. The OpenAPI document (`/openapi/v1.json`,
+also checks that both tables are reachable. The OpenAPI document (`/openapi/v1.json`,
 from `Microsoft.AspNetCore.OpenApi`) and Swagger UI are only mapped in Development.
 
 The container image is `aspnet:10.0-noble-chiseled` running as its non-root user: it has no
@@ -40,8 +44,8 @@ dotnet test --project tests/PaymentGatewayApiUnitTests
 dotnet run --project tests/PaymentGatewayApiUnitTests   # equivalent, xUnit v3 projects are executables
 ```
 
-Target the test project explicitly: a bare `dotnet test` (or `--solution`) fails because the
-web project's `Microsoft.NET.Test.Sdk` reference makes it look like a VSTest project.
+A bare `dotnet test` from the repository root runs all three suites, including the E2E one,
+which fails unless the compose stack is up; target a project to run one suite.
 
 `BankClient` is unit-tested through a `StubHttpMessageHandler`. `PaymentsRepository` is only
 mocked in unit tests; the integration tests exercise it against real DynamoDB Local.
@@ -57,15 +61,17 @@ idempotency keys, rate limiting, startup validation and no card number in any lo
 
 ```bash
 dotnet test --project tests/PaymentGatewayApiIntegrationTests   # ~10s, Docker required
-``` Tests commented `// NOTE: defect` pin current, known-wrong
-behaviour — update them when the defect is fixed.
+```
+
+Don't pin known-wrong behaviour in a passing test: fix the defect, or skip the test with a
+reason that links an issue (`[Fact(Skip = "... #N")]`).
 
 End-to-end tests live in `tests/PaymentGatewayApiEndToEndTests`. They are black-box: they call
 the running API over HTTP and do not reference the `src` project, so they need
 the whole stack up, including the API container, which sits behind the compose `api` profile:
 
 ```bash
-cd src && docker compose --profile api up -d --build    # api on :5067, same port as dotnet run
+cd src && docker compose --profile api up -d --build --wait    # api on :5067, same port as dotnet run
 dotnet test --project tests/PaymentGatewayApiEndToEndTests
 ```
 
@@ -178,8 +184,11 @@ change, recreate local data with `docker compose down` then `up`.
 All DI registration lives in `Program.cs`. The repository and the validator are stateless
 singletons, as is the `IAmazonDynamoDB` client registered through
 `AddAWSService<IAmazonDynamoDB>()`. `BankClient` is a typed `HttpClient` (transient) whose
-resilience handler has retries disabled, and `PaymentService` is scoped so it never captures it. New services follow the existing pattern — interface
-and implementation in the same file under `Services/` — and get registered there.
+resilience handler has retries disabled, and `PaymentService` is scoped so it never captures
+it. New services follow the existing pattern (interface and implementation in the same file
+under `Services/`) and get registered there. Authentication, the merchant claim and the rate
+limit policy live in `Security/`, options classes in `Configuration/`, middleware in
+`Middleware/`, the readiness check in `Health/`.
 
 Middleware order: `CorrelationIdMiddleware`, `UseSerilogRequestLogging`, `UseExceptionHandler`
 (with `GlobalExceptionHandler` and `AddProblemDetails`), `UseStatusCodePages` so bodiless errors
@@ -224,6 +233,8 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   swaps in a readable console format and adds files under `src/z-logs/` (gitignored).
   `UseSerilogRequestLogging` writes one summary line per request.
 - **Settings bind to validated options classes** in `Configuration/` (`Bank`, `Payments`,
-  `Dynamo`, `ApiKeys`, `RateLimiting`), checked at startup. Local-only values (the simulator URL, `AWS:ServiceURL`
-  pointed at DynamoDB Local) live in `appsettings.Development.json`; the compose file sets
-  them for the container through environment variables.
+  `Dynamo`, `ApiKeys`, `RateLimiting`), checked at startup (`ApiKeys` through the
+  source-generated `[OptionsValidator]`, which also validates each merchant). Local-only
+  values (the simulator URL, `AWS:ServiceURL` pointed at DynamoDB Local, the dev API key
+  hashes) live in `appsettings.Development.json`; the compose file sets them for the
+  container through environment variables.
