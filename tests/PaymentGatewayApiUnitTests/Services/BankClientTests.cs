@@ -38,9 +38,7 @@ public class BankClientTests
     [InlineData(11, 2027, "11/2027")]
     public void ToBankRequest_FormatsExpiryAsTwoDigitMonthAndFourDigitYear(int month, int year, string expected)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.ExpiryMonth = month;
-        payment.ExpiryYear = year;
+        PaymentRequest payment = TestData.ValidPaymentRequest() with { ExpiryMonth = month, ExpiryYear = year };
 
         BankRequest request = BankClient.ToBankRequest(payment);
 
@@ -62,8 +60,20 @@ public class BankClientTests
         Assert.Equal("2222405343248873", body.RootElement.GetProperty("card_number").GetString());
         Assert.Equal("11/2027", body.RootElement.GetProperty("expiry_date").GetString());
         Assert.Equal("GBP", body.RootElement.GetProperty("currency").GetString());
-        Assert.Equal(100, body.RootElement.GetProperty("amount").GetDecimal());
+        Assert.Equal(1050, body.RootElement.GetProperty("amount").GetInt32());
         Assert.Equal("123", body.RootElement.GetProperty("cvv").GetString());
+    }
+
+    [Fact]
+    public async Task Authorize_LowerCaseCurrency_IsSentUpperCase()
+    {
+        (BankClient client, StubHttpMessageHandler handler) = NewClient(_ => Json(HttpStatusCode.OK, """{"authorized":false}"""));
+
+        await client.Authorize(
+            TestData.PaymentId, TestData.ValidPaymentRequest() with { Currency = "gbp" }, TestContext.Current.CancellationToken);
+
+        using JsonDocument body = JsonDocument.Parse(handler.Bodies[0]);
+        Assert.Equal("GBP", body.RootElement.GetProperty("currency").GetString());
     }
 
     [Fact]

@@ -17,7 +17,7 @@ public static class TestData
             Currency = "GBP",
             ExpiryMonth = 11,
             ExpiryYear = 2027,
-            Amount = 100
+            Amount = 1050
         };
     }
 
@@ -31,7 +31,7 @@ public static class TestData
             ExpiryMonth = 11,
             ExpiryYear = 2027,
             Currency = "GBP",
-            Amount = 100,
+            Amount = 1050,
             CreatedAt = Now,
             UpdatedAt = Now
         };

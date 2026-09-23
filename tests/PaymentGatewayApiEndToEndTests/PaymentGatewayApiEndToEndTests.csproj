@@ -6,13 +6,10 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!-- no reference to the api project: the suite owns its request shape and reads raw JSON,
+       so a renamed property on the api side fails here instead of changing on both sides -->
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
-  </ItemGroup>
-
-  <!-- referenced only to reuse the request / response models, the api is called over http -->
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\PaymentGatewayApi.csproj" />
   </ItemGroup>
 
 </Project>

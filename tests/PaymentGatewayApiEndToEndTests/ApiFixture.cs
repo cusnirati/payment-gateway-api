@@ -8,7 +8,7 @@ using Xunit;
 
 namespace PaymentGatewayApiEndToEndTests;
 
-// shared by every test, waits for the api started by docker compose to answer its healthcheck
+// shared by every test, waits for the api started by docker compose to answer its liveness check
 public sealed class ApiFixture : IAsyncLifetime
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
@@ -19,11 +19,10 @@ public sealed class ApiFixture : IAsyncLifetime
     {
         string baseUrl = Environment.GetEnvironmentVariable("E2E_BASE_URL") ?? "http://localhost:5067";
 
-        // long timeout, the api retries the bank's 503 before answering
         this.Client = new HttpClient
         {
             BaseAddress = new Uri(baseUrl),
-            Timeout = TimeSpan.FromSeconds(60)
+            Timeout = TimeSpan.FromSeconds(30)
         };
         this.Client.DefaultRequestHeaders.Add("CallerId", "e2e-tests");
     }
@@ -35,7 +34,7 @@ public sealed class ApiFixture : IAsyncLifetime
         {
             try
             {
-                HttpResponseMessage response = await this.Client.GetAsync("api/payment");
+                HttpResponseMessage response = await this.Client.GetAsync(new Uri("health/live", UriKind.Relative));
                 if (response.IsSuccessStatusCode)
                 {
                     return;

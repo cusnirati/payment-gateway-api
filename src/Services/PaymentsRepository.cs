@@ -111,7 +111,7 @@ public class PaymentsRepository : IPaymentsRepository
             ExpiryMonth = int.Parse(item["ExpiryMonth"].N, CultureInfo.InvariantCulture),
             ExpiryYear = int.Parse(item["ExpiryYear"].N, CultureInfo.InvariantCulture),
             Currency = item["Currency"].S,
-            Amount = decimal.Parse(item["Amount"].N, CultureInfo.InvariantCulture),
+            Amount = int.Parse(item["Amount"].N, CultureInfo.InvariantCulture),
             AuthorizationCode = item.TryGetValue("AuthorizationCode", out AttributeValue? code) ? code.S : null,
             CreatedAt = DateTimeOffset.Parse(item["CreatedAt"].S, CultureInfo.InvariantCulture),
             UpdatedAt = DateTimeOffset.Parse(item["UpdatedAt"].S, CultureInfo.InvariantCulture)

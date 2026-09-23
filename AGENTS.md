@@ -43,7 +43,7 @@ deliberately not unit-tested; it is only mocked through its interface. Tests com
 behaviour — update them when the defect is fixed.
 
 End-to-end tests live in `tests/PaymentGatewayApiEndToEndTests`. They are black-box: they call
-the running API over HTTP (the `src` project is referenced only for its models), so they need
+the running API over HTTP and do not reference the `src` project, so they need
 the whole stack up, including the API container, which sits behind the compose `api` profile:
 
 ```bash
@@ -51,23 +51,23 @@ cd src && docker compose --profile api up -d --build    # api on :5067, same por
 dotnet test --project tests/PaymentGatewayApiEndToEndTests
 ```
 
-An assembly fixture (`ApiFixture`) polls the healthcheck for 30s before failing. The base URL
+An assembly fixture (`ApiFixture`) polls `/health/live` for 30s before failing. The base URL
 defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to run against
 `dotnet run` instead of the container). The bank client's resilience handler never retries
-the `POST` (it is not idempotent), so the bank's `503` fails fast. String results (`"ok"`, the payment id,
-status names) come back as `text/plain`, not JSON strings.
+the `POST` (it is not idempotent), so the bank's `503` fails fast. The suite owns its request
+record and reads responses as raw JSON (`JsonNode`), so it catches contract drift.
 
 For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health,
-get-by-id, authorized/declined/500 posts, and a direct simulator post), or the `curl` lines
-written above each action in `Controllers/PaymentController.cs`.
+get-by-id, authorized/declined/502 posts, and a direct simulator post), or the `curl` lines
+written above each action in `Controllers/PaymentsController.cs`.
 
 ## Architecture
 
-A `POST /api/payment` flows through one chain, each link behind an interface:
+A `POST /api/payments` flows through one chain, each link behind an interface:
 
-`PaymentController` runs the five `IPaymentRequestValidator` checks
-(`Services/PaymentRequestValidator.cs`), then hands the request to `IPaymentService`
-(`Services/PaymentService.cs`), which:
+`PaymentsController` asks `IPaymentRequestValidator.Validate` (`Services/PaymentRequestValidator.cs`)
+for every broken rule and answers `400` `ValidationProblemDetails` if there are any; otherwise
+it hands the request to `IPaymentService` (`Services/PaymentService.cs`), which:
 
 1. stores a `Payment` with status `Pending` through `IPaymentsRepository`
    (`Services/PaymentsRepository.cs`), so a card is never charged without a record; if this
@@ -88,9 +88,23 @@ A `POST /api/payment` flows through one chain, each link behind an interface:
 
 A request that fails validation never becomes a payment.
 
+### HTTP contract
+
+| Outcome | Response |
+| --- | --- |
+| `Authorized` / `Declined` | `201` + `Location: /api/payments/{id}` + the payment |
+| invalid request (validator or model binding) | `400` `ValidationProblemDetails`, errors keyed by JSON field |
+| `Failed` / `Unknown` | `502` `ProblemDetails` with `paymentId` and `paymentStatus` extensions |
+| `GET` of an unknown id | `404` `ProblemDetails` |
+| unhandled exception | `500` `ProblemDetails` (`GlobalExceptionHandler`), never the exception message |
+
+Amounts are integers in the currency's minor unit (`1050` is £10.50), currencies come from
+`Payments:SupportedCurrencies`, and statuses serialize as names. `PaymentRequest` is a
+record whose `ToString` masks the card number and CVV.
+
 ### Models come in pairs, deliberately
 
-`PaymentRequest` / `PostPaymentResponse` are this gateway's own API shape, `Payment` is its
+`PaymentRequest` / `PaymentResponse` are this gateway's own API shape, `Payment` is its
 domain record, and `BankRequest` / `BankResponse` model the acquiring bank's contract with
 `snake_case` names through `[JsonPropertyName]` (`card_number`, `expiry_date`,
 `authorization_code`). Keep them separate: collapsing them couples our public API to the
@@ -111,7 +125,8 @@ singletons, as is the `IAmazonDynamoDB` client registered through
 resilience handler has retries disabled, and `PaymentService` is scoped so it never captures it. New services follow the existing pattern — interface
 and implementation in the same file under `Services/` — and get registered there.
 
-Middleware order is `LogMiddleware` then `ErrorMiddleware`.
+Middleware order is `LogMiddleware`, then `UseExceptionHandler` (with `GlobalExceptionHandler`
+and `AddProblemDetails`), then `UseStatusCodePages` so bodiless errors get a `ProblemDetails` too.
 
 ## Bank simulator behaviour
 
@@ -120,10 +135,10 @@ The WireMock mappings in `src/Simulators/wiremock/mappings/` select a response f
 
 | Card ends in | Simulator response | Gateway result |
 | --- | --- | --- |
-| odd digit | `200` `authorized: true` | `Authorized` |
-| even digit (not 0) | `200` `authorized: false` | `Declined` |
-| `0` | `503` | `Failed` |
-| any missing field | `400` | `Failed` |
+| odd digit | `200` `authorized: true` | `201` `Authorized` |
+| even digit (not 0) | `200` `authorized: false` | `201` `Declined` |
+| `0` | `503` | `502` `Failed` |
+| any missing field | `400` | `502` `Failed` |
 
 The three `200`/`503` stubs also require `expiry_date` in the bank's `MM/yyyy` format, so a
 malformed expiry falls through like any other unmatched request.
@@ -146,7 +161,7 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`
   header gets a generated GUID), so never pass them by hand.
 - **Serilog is configured from `src/logconfig.json`, not `appsettings.json`.**
-  Settings bind to validated options classes in `Configuration/` (`Bank`, `Dynamo`),
+  Settings bind to validated options classes in `Configuration/` (`Bank`, `Payments`, `Dynamo`),
   checked at startup. Local-only values (the simulator URL, `AWS:ServiceURL` pointed at
   DynamoDB Local) live in `appsettings.Development.json`; the compose file sets them for
   the container through environment variables. Verbose file logs go to `src/z-logs/`

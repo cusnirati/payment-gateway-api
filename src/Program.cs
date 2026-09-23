@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 using Amazon.DynamoDBv2;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -16,11 +17,26 @@ var config = new ConfigurationBuilder().AddJsonFile("logconfig.json").Build();
 var log = new LoggerConfiguration().ReadFrom.Configuration(config).CreateLogger();
 builder.Host.UseSerilog(log);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // statuses read as names, and a null where the model says non-nullable is a 400, not a crash later
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.RespectNullableAnnotations = true;
+    });
+
+// every error body is a ProblemDetails with the request's traceId, never an exception message
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddHealthChecks();
 
 // a missing or malformed setting fails the startup, not the first request that needs it
 builder.Services.AddOptions<BankOptions>()
     .BindConfiguration(BankOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddOptions<PaymentOptions>()
+    .BindConfiguration(PaymentOptions.SectionName)
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddOptions<DynamoOptions>()
@@ -56,8 +72,10 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseMiddleware<LogMiddleware>();
-app.UseMiddleware<ErrorMiddleware>();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
+app.MapHealthChecks("/health/live");
 app.MapControllers();
 app.Run();
 

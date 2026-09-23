@@ -1,7 +1,9 @@
 using System;
-using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApiEndToEndTests;
+
+// the request as a merchant would send it, independent of the api's own model
+public sealed record PaymentBody(string CardNumber, int ExpiryMonth, int ExpiryYear, string Currency, int Amount, string Cvv);
 
 public static class TestData
 {
@@ -10,16 +12,8 @@ public static class TestData
     public const string DeclinedCard = "2222405343248872";
     public const string BankUnavailableCard = "2222405343248870";
 
-    public static PaymentRequest ValidPaymentRequest(string cardNumber)
+    public static PaymentBody ValidPayment(string cardNumber)
     {
-        return new PaymentRequest
-        {
-            CardNumber = cardNumber,
-            Cvv = "123",
-            Currency = "GBP",
-            ExpiryMonth = 11,
-            ExpiryYear = DateTime.Now.Year + 1,
-            Amount = 100
-        };
+        return new PaymentBody(cardNumber, ExpiryMonth: 11, ExpiryYear: DateTime.UtcNow.Year + 1, Currency: "GBP", Amount: 1050, Cvv: "123");
     }
 }

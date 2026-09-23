@@ -1,23 +1,39 @@
+using System.Globalization;
+using System.Text;
+
 namespace PaymentGatewayApi.Models;
 
 // example json payload
 // {
-//   "cardnumber": "2222405343248873",
-//   "ExpiryMonth": "11",
-//   "ExpiryYear": "2027",
+//   "cardNumber": "2222405343248873",
+//   "expiryMonth": 4,
+//   "expiryYear": 2027,
 //   "currency": "GBP",
-//   "amount": 100,
+//   "amount": 1050,
 //   "cvv": "123"
 // }
 
-public class PaymentRequest
+public sealed record PaymentRequest
 {
-    public required string CardNumber { get; set; }
-    public required string Cvv { get; set; }
-    public required string Currency { get; set; }
+    public required string CardNumber { get; init; }
+    public required int ExpiryMonth { get; init; }
+    public required int ExpiryYear { get; init; }
 
-    public int ExpiryMonth { get; set; }
-    public int ExpiryYear { get; set; }
+    // ISO 4217 code, one of Payments:SupportedCurrencies
+    public required string Currency { get; init; }
 
-    public decimal Amount { get; set; }
+    // in the currency's minor unit, 1050 is £10.50
+    public required int Amount { get; init; }
+
+    public required string Cvv { get; init; }
+
+    // a record prints every property by default; keep the card number and CVV out of any
+    // log line or exception message that formats the request
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("CardNumber = ****, ");
+        builder.Append(CultureInfo.InvariantCulture, $"ExpiryMonth = {this.ExpiryMonth}, ExpiryYear = {this.ExpiryYear}, ");
+        builder.Append(CultureInfo.InvariantCulture, $"Currency = {this.Currency}, Amount = {this.Amount}, Cvv = ***");
+        return true;
+    }
 }

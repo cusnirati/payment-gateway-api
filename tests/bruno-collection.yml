@@ -19,7 +19,7 @@ items:
       seq: 2
     http:
       method: GET
-      url: http://localhost:5067/api/payment/abcbc011-c8d9-484b-a67a-28fbda7461f3
+      url: http://localhost:5067/api/payments/abcbc011-c8d9-484b-a67a-28fbda7461f3
       headers:
         - name: CallerId
           value: bruno-client
@@ -31,14 +31,14 @@ items:
       maxRedirects: 5
       forwardAuthorizationHeader: true
   - info:
-      name: get payment health
+      name: get health live
       type: http
       seq: 1
     http:
       method: GET
-      url: http://localhost:5067/api/payment
+      url: http://localhost:5067/health/live
       headers:
-        - name: Callerid
+        - name: CallerId
           value: bruno-client
       auth: inherit
     settings:
@@ -48,12 +48,12 @@ items:
       maxRedirects: 5
       forwardAuthorizationHeader: true
   - info:
-      name: post payment accepted
+      name: post payment authorized
       type: http
       seq: 3
     http:
       method: POST
-      url: http://localhost:5067/api/payment
+      url: http://localhost:5067/api/payments
       headers:
         - name: Content-Type
           value: application/json
@@ -68,11 +68,11 @@ items:
         type: json
         data: |-
           {
-            "cardnumber": "2222405343248873",
-            "ExpiryMonth": "11",
-            "ExpiryYear": "2027",
+            "cardNumber": "2222405343248873",
+            "expiryMonth": 4,
+            "expiryYear": 2030,
             "currency": "GBP",
-            "amount": 100,
+            "amount": 1050,
             "cvv": "123"
           }
       auth: inherit
@@ -88,7 +88,7 @@ items:
       seq: 4
     http:
       method: POST
-      url: http://localhost:5067/api/payment
+      url: http://localhost:5067/api/payments
       headers:
         - name: Content-Type
           value: application/json
@@ -103,11 +103,11 @@ items:
         type: json
         data: |-
           {
-            "cardnumber": "2222405343248872",
-            "ExpiryMonth": "11",
-            "ExpiryYear": "2027",
+            "cardNumber": "2222405343248872",
+            "expiryMonth": 4,
+            "expiryYear": 2030,
             "currency": "GBP",
-            "amount": 100,
+            "amount": 1050,
             "cvv": "123"
           }
       auth: inherit
@@ -118,12 +118,12 @@ items:
       maxRedirects: 5
       forwardAuthorizationHeader: true
   - info:
-      name: post payment error 500
+      name: post payment bank unavailable 502
       type: http
       seq: 5
     http:
       method: POST
-      url: http://localhost:5067/api/payment
+      url: http://localhost:5067/api/payments
       headers:
         - name: Content-Type
           value: application/json
@@ -138,11 +138,11 @@ items:
         type: json
         data: |-
           {
-            "cardnumber": "2222405343248870",
-            "ExpiryMonth": "11",
-            "ExpiryYear": "2027",
+            "cardNumber": "2222405343248870",
+            "expiryMonth": 4,
+            "expiryYear": 2030,
             "currency": "GBP",
-            "amount": 100,
+            "amount": 1050,
             "cvv": "123"
           }
       auth: inherit
@@ -169,9 +169,9 @@ items:
         data: |-
           {
             "card_number": "2222405343248873",
-            "expiry_date": "04/2025",
+            "expiry_date": "04/2030",
             "currency": "GBP",
-            "amount": 100,
+            "amount": 1050,
             "cvv": "123"
           }
       auth: inherit

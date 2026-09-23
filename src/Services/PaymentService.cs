@@ -40,7 +40,7 @@ public partial class PaymentService : IPaymentService
             CardNumberLastFour = request.CardNumber[^4..],
             ExpiryMonth = request.ExpiryMonth,
             ExpiryYear = request.ExpiryYear,
-            Currency = request.Currency,
+            Currency = request.Currency.ToUpperInvariant(),
             Amount = request.Amount,
             CreatedAt = now,
             UpdatedAt = now

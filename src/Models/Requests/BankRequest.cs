@@ -7,7 +7,7 @@ namespace PaymentGatewayApi.Models;
 //   "card_number": "2222405343248873",
 //   "expiry_date": "04/2025",
 //   "currency": "GBP",
-//   "amount": 100,
+//   "amount": 1050,
 //   "cvv": "123"
 // }
 
@@ -20,6 +20,9 @@ public class BankRequest
     public required string ExpiryDate { get; set; }
 
     public required string Currency { get; set; }
-    public decimal Amount { get; set; }
+
+    // minor currency unit
+    public int Amount { get; set; }
+
     public required string Cvv { get; set; }
 }

@@ -2,8 +2,8 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using PaymentGatewayApi.Models;
 using Xunit;
 
 namespace PaymentGatewayApiEndToEndTests;
@@ -17,111 +17,148 @@ public class PaymentEndToEndTests
         this.client = fixture.Client;
     }
 
-    [Fact]
-    public async Task Healthcheck_ReturnsOk()
+    private Task<HttpResponseMessage> Post(PaymentBody payment)
     {
-        HttpResponseMessage response = await this.client.GetAsync("api/payment", TestContext.Current.CancellationToken);
+        return this.client.PostAsJsonAsync("api/payments", payment, TestContext.Current.CancellationToken);
+    }
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("ok", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    private static async Task<JsonNode> ReadJson(HttpResponseMessage response)
+    {
+        JsonNode? json = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.NotNull(json);
+        return json;
+    }
+
+    private static async Task<JsonNode> AssertProblem(HttpResponseMessage response, HttpStatusCode expected)
+    {
+        Assert.Equal(expected, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        JsonNode problem = await ReadJson(response);
+        Assert.Equal((int)expected, problem["status"]?.GetValue<int>());
+        Assert.NotNull(problem["traceId"]);
+        return problem;
     }
 
     [Fact]
-    public async Task PostPayment_OddCard_AuthorizedAndRetrievable()
+    public async Task HealthLive_ReturnsOk()
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest(TestData.AuthorizedCard);
+        HttpResponseMessage response = await this.client.GetAsync("health/live", TestContext.Current.CancellationToken);
 
-        HttpResponseMessage postResponse = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 
-        Assert.Equal(HttpStatusCode.OK, postResponse.StatusCode);
-        string paymentId = await postResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        Assert.True(Guid.TryParse(paymentId, out _));
+    [Theory]
+    [InlineData(TestData.AuthorizedCard, "Authorized")]
+    [InlineData(TestData.DeclinedCard, "Declined")]
+    public async Task PostPayment_BankAnswers_CreatedAndRetrievable(string cardNumber, string expectedStatus)
+    {
+        PaymentBody payment = TestData.ValidPayment(cardNumber);
 
-        HttpResponseMessage getResponse = await this.client.GetAsync($"api/payment/{paymentId}", TestContext.Current.CancellationToken);
+        HttpResponseMessage postResponse = await this.Post(payment);
+
+        Assert.Equal(HttpStatusCode.Created, postResponse.StatusCode);
+        JsonNode created = await ReadJson(postResponse);
+        Guid paymentId = Guid.Parse(created["id"]!.GetValue<string>());
+        Assert.Equal(expectedStatus, created["status"]?.GetValue<string>());
+        Assert.NotNull(postResponse.Headers.Location);
+        Assert.EndsWith($"/api/payments/{paymentId}", postResponse.Headers.Location.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        HttpResponseMessage getResponse = await this.client.GetAsync(postResponse.Headers.Location, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
         string raw = await getResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        Assert.DoesNotContain(TestData.AuthorizedCard, raw);
+        Assert.DoesNotContain(cardNumber, raw);
+        Assert.DoesNotContain("cvv", raw, StringComparison.OrdinalIgnoreCase);
 
-        PostPaymentResponse? stored = await getResponse.Content.ReadFromJsonAsync<PostPaymentResponse>(TestContext.Current.CancellationToken);
-        Assert.NotNull(stored);
-        Assert.Equal(paymentId, stored.PaymentId);
-        Assert.Equal(PaymentStatus.Authorized, stored.Status);
-        Assert.Equal("8873", stored.CardNumberLastFour);
-        Assert.Equal(payment.ExpiryMonth, stored.ExpiryMonth);
-        Assert.Equal(payment.ExpiryYear, stored.ExpiryYear);
-        Assert.Equal(payment.Currency, stored.Currency);
-        Assert.Equal(payment.Amount, stored.Amount);
+        JsonNode stored = JsonNode.Parse(raw)!;
+        Assert.Equal(paymentId.ToString(), stored["id"]?.GetValue<string>());
+        Assert.Equal(expectedStatus, stored["status"]?.GetValue<string>());
+        Assert.Equal(cardNumber[^4..], stored["cardNumberLastFour"]?.GetValue<string>());
+        Assert.Equal(payment.ExpiryMonth, stored["expiryMonth"]?.GetValue<int>());
+        Assert.Equal(payment.ExpiryYear, stored["expiryYear"]?.GetValue<int>());
+        Assert.Equal(payment.Currency, stored["currency"]?.GetValue<string>());
+        Assert.Equal(payment.Amount, stored["amount"]?.GetValue<int>());
     }
 
     [Fact]
     public async Task PostPayment_SingleDigitExpiryMonth_Authorized()
     {
         // the simulator only answers a "MM/yyyy" expiry, so a month sent as "4/..." would fall through to its 400
-        PaymentRequest payment = TestData.ValidPaymentRequest(TestData.AuthorizedCard);
-        payment.ExpiryMonth = 4;
+        HttpResponseMessage response = await this.Post(TestData.ValidPayment(TestData.AuthorizedCard) with { ExpiryMonth = 4 });
 
-        HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("Authorized", (await ReadJson(response))["status"]?.GetValue<string>());
     }
 
     [Fact]
-    public async Task PostPayment_EvenCard_Declined()
+    public async Task PostPayment_BankUnavailable_BadGatewayWithFailedPaymentOnRecord()
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest(TestData.DeclinedCard);
+        HttpResponseMessage response = await this.Post(TestData.ValidPayment(TestData.BankUnavailableCard));
 
-        HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
+        JsonNode problem = await AssertProblem(response, HttpStatusCode.BadGateway);
+        Assert.Equal("Failed", problem["paymentStatus"]?.GetValue<string>());
 
-        await AssertBadRequest(response, nameof(PaymentStatus.Declined));
-    }
-
-    [Fact]
-    public async Task PostPayment_CardEndingZero_Failed()
-    {
-        PaymentRequest payment = TestData.ValidPaymentRequest(TestData.BankUnavailableCard);
-
-        HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
-
-        await AssertBadRequest(response, nameof(PaymentStatus.Failed));
+        string paymentId = problem["paymentId"]!.GetValue<string>();
+        HttpResponseMessage getResponse = await this.client.GetAsync($"api/payments/{paymentId}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        Assert.Equal("Failed", (await ReadJson(getResponse))["status"]?.GetValue<string>());
     }
 
     [Theory]
-    [InlineData("CardNumber")]
-    [InlineData("Expiry")]
-    [InlineData("ExpiryYearZero")]
-    [InlineData("Amount")]
-    [InlineData("Currency")]
-    [InlineData("Cvv")]
-    public async Task PostPayment_InvalidField_Rejected(string invalidField)
+    [InlineData("cardNumber")]
+    [InlineData("expiryMonth")]
+    [InlineData("expiryYear")]
+    [InlineData("amount")]
+    [InlineData("currency")]
+    [InlineData("cvv")]
+    public async Task PostPayment_InvalidField_ValidationProblemNamingTheField(string field)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest(TestData.AuthorizedCard);
-        switch (invalidField)
+        PaymentBody payment = TestData.ValidPayment(TestData.AuthorizedCard);
+        payment = field switch
         {
-            case "CardNumber": payment.CardNumber = "1234"; break;
-            case "Expiry": payment.ExpiryYear = DateTime.Now.Year - 1; break;
-            case "ExpiryYearZero": payment.ExpiryYear = 0; break;
-            case "Amount": payment.Amount = 0; break;
-            case "Currency": payment.Currency = "GBPX"; break;
-            case "Cvv": payment.Cvv = "12"; break;
-        }
+            "cardNumber" => payment with { CardNumber = "1234" },
+            "expiryMonth" => payment with { ExpiryMonth = 13 },
+            "expiryYear" => payment with { ExpiryYear = 0 },
+            "amount" => payment with { Amount = 0 },
+            "currency" => payment with { Currency = "JPY" },
+            _ => payment with { Cvv = "12" }
+        };
 
-        HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
+        HttpResponseMessage response = await this.Post(payment);
 
-        await AssertBadRequest(response, "Rejected");
+        JsonNode problem = await AssertProblem(response, HttpStatusCode.BadRequest);
+        JsonObject errors = problem["errors"]!.AsObject();
+        Assert.Single(errors);
+        Assert.True(errors.ContainsKey(field));
+    }
+
+    [Theory]
+    [InlineData("""{"expiryMonth":11,"expiryYear":2030,"currency":"GBP","amount":1050,"cvv":"123"}""")] // no card number
+    [InlineData("""{"cardNumber":null,"expiryMonth":11,"expiryYear":2030,"currency":"GBP","amount":1050,"cvv":"123"}""")]
+    [InlineData("""{"cardNumber":"2222405343248873","expiryMonth":11,"expiryYear":2030,"currency":"GBP","amount":10.5,"cvv":"123"}""")]
+    public async Task PostPayment_MalformedBody_ValidationProblem(string body)
+    {
+        using StringContent content = new(body, System.Text.Encoding.UTF8, "application/json");
+
+        HttpResponseMessage response = await this.client.PostAsync("api/payments", content, TestContext.Current.CancellationToken);
+
+        await AssertProblem(response, HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task GetPayment_UnknownId_ReturnsNotFound()
+    public async Task GetPayment_UnknownId_NotFoundProblem()
     {
-        HttpResponseMessage response = await this.client.GetAsync($"api/payment/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
+        HttpResponseMessage response = await this.client.GetAsync($"api/payments/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        await AssertProblem(response, HttpStatusCode.NotFound);
     }
 
-    private static async Task AssertBadRequest(HttpResponseMessage response, string expected)
+    [Fact]
+    public async Task GetPayment_MalformedId_NotFound()
     {
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(expected, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        HttpResponseMessage response = await this.client.GetAsync("api/payments/not-a-guid", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

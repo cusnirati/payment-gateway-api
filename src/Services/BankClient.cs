@@ -38,7 +38,7 @@ public partial class BankClient : IBankClient
             // the bank expects "MM/yyyy", e.g. "04/2025"
             CardNumber = payment.CardNumber,
             ExpiryDate = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}",
-            Currency = payment.Currency,
+            Currency = payment.Currency.ToUpperInvariant(),
             Amount = payment.Amount,
             Cvv = payment.Cvv
         };

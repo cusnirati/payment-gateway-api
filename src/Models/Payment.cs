@@ -11,7 +11,7 @@ public sealed record Payment
     public required int ExpiryMonth { get; init; }
     public required int ExpiryYear { get; init; }
     public required string Currency { get; init; }
-    public required decimal Amount { get; init; }
+    public required int Amount { get; init; }
     public string? AuthorizationCode { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
     public required DateTimeOffset UpdatedAt { get; init; }
