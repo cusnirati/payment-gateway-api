@@ -8,4 +8,4 @@ Certain things are omitted (verbosity in logs, authorization, https, http retrie
 
 More verbose than console ones logs are in directory `z-logs`.
 
-todo add later how to run / debug
+add later how to run / debug

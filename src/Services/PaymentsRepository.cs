@@ -17,6 +17,7 @@ public interface IPaymentsRepository
     Task<PostPaymentResponse?> Get(string paymentId);
 }
 
+// todo add try catch for all possible scenarios
 public class PaymentsRepository : IPaymentsRepository
 {
     private readonly ILogger<PaymentsRepository> logger;
@@ -36,7 +37,6 @@ public class PaymentsRepository : IPaymentsRepository
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
         };
         PutItemResponse response = await this.dynamo.PutItemAsync("Payments", item);
-        // todo log response
     }
 
     public async Task<PostPaymentResponse?> Get(string paymentId)
