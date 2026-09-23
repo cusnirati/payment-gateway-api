@@ -14,8 +14,13 @@ RUN dotnet publish src/PaymentGatewayApi.csproj \
     --no-restore \
     /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+# chiseled: no shell, no package manager, only what the runtime needs. There is no curl for a
+# HEALTHCHECK either; the orchestrator probes /health/live and /health/ready over HTTP instead.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+
+# the image's built-in non-root user
+USER $APP_UID
 
 ENTRYPOINT ["dotnet", "PaymentGatewayApi.dll"]

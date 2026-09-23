@@ -17,12 +17,17 @@ API container on `:5067` (don't combine it with `dotnet run`, they share the por
 
 ```bash
 dotnet build PaymentGatewayApi.slnx                  # from repo root
-dotnet run --project src/PaymentGatewayApi.csproj    # http://localhost:5067, Swagger at /swagger
+dotnet run --project src/PaymentGatewayApi.csproj    # http://localhost:5067, Swagger UI at /swagger (Development only)
 docker build -f src/Dockerfile -t payment-gateway-api .   # container image, from repo root
 ```
 
 `dotnet run` sets the working directory to `src/`, which is what makes the Development
-`z-logs/` output path resolve.
+`z-logs/` output path resolve. `/health/live` answers when the process is up, `/health/ready`
+also checks that the payments table is reachable. The OpenAPI document (`/openapi/v1.json`,
+from `Microsoft.AspNetCore.OpenApi`) and Swagger UI are only mapped in Development.
+
+The container image is `aspnet:10.0-noble-chiseled` running as its non-root user: it has no
+shell or curl, so there is no `HEALTHCHECK`; probe the health endpoints over HTTP.
 
 ### Tests
 

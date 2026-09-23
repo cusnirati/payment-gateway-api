@@ -2,12 +2,14 @@ using System;
 using System.Text.Json.Serialization;
 using Amazon.DynamoDBv2;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using PaymentGatewayApi.Configuration;
+using PaymentGatewayApi.Health;
 using PaymentGatewayApi.Middleware;
 using PaymentGatewayApi.Services;
 using Serilog;
@@ -43,7 +45,10 @@ try
         }
     });
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-    builder.Services.AddHealthChecks();
+
+    // live: the process answers; ready: it can also reach its table (tagged checks only)
+    builder.Services.AddHealthChecks()
+        .AddCheck<DynamoHealthCheck>("dynamodb", tags: ["ready"], timeout: TimeSpan.FromSeconds(3));
 
     // a missing or malformed setting fails the startup, not the first request that needs it
     builder.Services.AddOptions<BankOptions>()
@@ -79,12 +84,10 @@ try
     builder.Services.AddSingleton<IPaymentRequestValidator, PaymentRequestValidator>();
     builder.Services.AddScoped<IPaymentService, PaymentService>();
 
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+    // the platform's own OpenAPI document generator, served at /openapi/v1.json
+    builder.Services.AddOpenApi();
 
     var app = builder.Build();
-    app.UseSwagger();
-    app.UseSwaggerUI();
 
     // the correlation id wraps everything else, so every log line of the request carries it,
     // including the request summary and the exception handler's
@@ -93,8 +96,16 @@ try
     app.UseExceptionHandler();
     app.UseStatusCodePages();
 
-    app.MapHealthChecks("/health/live");
+    app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
     app.MapControllers();
+
+    // the API description and its UI are a development aid, not part of the deployed surface
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+        app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "Payment Gateway API"));
+    }
 
     app.Run();
     return 0;

@@ -40,12 +40,24 @@ public class PaymentEndToEndTests
         return problem;
     }
 
-    [Fact]
-    public async Task HealthLive_ReturnsOk()
+    [Theory]
+    [InlineData("health/live")]
+    [InlineData("health/ready")] // the stack's DynamoDB table is reachable
+    public async Task Health_ReturnsHealthy(string path)
     {
-        HttpResponseMessage response = await this.client.GetAsync("health/live", TestContext.Current.CancellationToken);
+        HttpResponseMessage response = await this.client.GetAsync(path, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Healthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task OpenApi_NotServedOutsideDevelopment()
+    {
+        // the container runs in Production
+        HttpResponseMessage response = await this.client.GetAsync("openapi/v1.json", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Theory]
