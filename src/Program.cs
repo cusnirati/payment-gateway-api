@@ -27,10 +27,11 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     // sinks, levels and formats come from the "Serilog" section: JSON to the console by default,
-    // readable console plus files under z-logs/ in Development; ReadFrom.Services lets tests add a sink
-    builder.Services.AddSerilog((services, logger) => logger
-        .ReadFrom.Configuration(builder.Configuration)
-        .ReadFrom.Services(services));
+    // readable console plus files under z-logs/ in Development; ReadFrom.Services lets tests add a sink.
+    // The host owns (and flushes) this logger; the static Log.Logger stays the startup logger above.
+    builder.Services.AddSerilog(
+        (services, logger) => logger.ReadFrom.Configuration(builder.Configuration).ReadFrom.Services(services),
+        preserveStaticLogger: true);
 
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
@@ -70,8 +71,8 @@ try
 
     builder.Services.AddOptions<ApiKeyOptions>()
         .BindConfiguration(ApiKeyOptions.SectionName)
-        .ValidateDataAnnotations()
         .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<ApiKeyOptions>, ApiKeyOptionsValidator>();
     builder.Services.AddOptions<RateLimitOptions>()
         .BindConfiguration(RateLimitOptions.SectionName)
         .ValidateDataAnnotations()

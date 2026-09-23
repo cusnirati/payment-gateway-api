@@ -43,8 +43,21 @@ dotnet run --project tests/PaymentGatewayApiUnitTests   # equivalent, xUnit v3 p
 Target the test project explicitly: a bare `dotnet test` (or `--solution`) fails because the
 web project's `Microsoft.NET.Test.Sdk` reference makes it look like a VSTest project.
 
-`BankClient` is unit-tested through a `StubHttpMessageHandler`. `PaymentsRepository` is
-deliberately not unit-tested; it is only mocked through its interface. Tests commented `// NOTE: defect` pin current, known-wrong
+`BankClient` is unit-tested through a `StubHttpMessageHandler`. `PaymentsRepository` is only
+mocked in unit tests; the integration tests exercise it against real DynamoDB Local.
+
+Integration tests live in `tests/PaymentGatewayApiIntegrationTests`: the whole API in process
+through `WebApplicationFactory<Program>` (environment `Testing`), DynamoDB Local started by
+Testcontainers (so Docker must be running, nothing else), and the production bank client and
+resilience pipeline in front of a `StubBank` handler that answers like the simulator unless a
+test sets up its own answer for a card. Tests run in parallel, so each one uses its own card
+numbers (`Cards.Unique`) and never shares stub state. They cover the money paths: no retry,
+bank timeouts, the outcome write failing, a client disconnecting mid-payment, concurrent
+idempotency keys, rate limiting, startup validation and no card number in any log line.
+
+```bash
+dotnet test --project tests/PaymentGatewayApiIntegrationTests   # ~10s, Docker required
+``` Tests commented `// NOTE: defect` pin current, known-wrong
 behaviour — update them when the defect is fixed.
 
 End-to-end tests live in `tests/PaymentGatewayApiEndToEndTests`. They are black-box: they call

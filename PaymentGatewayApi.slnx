@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PaymentGatewayApiEndToEndTests/PaymentGatewayApiEndToEndTests.csproj" />
+    <Project Path="tests/PaymentGatewayApiIntegrationTests/PaymentGatewayApiIntegrationTests.csproj" />
     <Project Path="tests/PaymentGatewayApiUnitTests/PaymentGatewayApiUnitTests.csproj" />
   </Folder>
 </Solution>
