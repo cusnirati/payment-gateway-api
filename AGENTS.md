@@ -21,9 +21,6 @@ dotnet run --project src/PaymentGatewayApi.csproj    # http://localhost:5067, Sw
 docker build -t payment-gateway-api src/             # container image
 ```
 
-The image runs as the aspnet base image's non-root `app` user (`USER $APP_UID`); only
-`/app/z-logs` is writable by it.
-
 `dotnet run` sets the working directory to `src/`, which is what makes `logconfig.json` and
 the `z-logs/` output path resolve.
 

@@ -82,7 +82,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
     public bool IsCurrencyCodeValid(PaymentRequest payment)
     {
         string[] supportedCurrencies = this.config.GetSection("SupportedCurrencies").Get<string[]>() ?? [];
-        if (!supportedCurrencies.Contains(payment.Currency, StringComparer.Ordinal))
+        if (!supportedCurrencies.Contains(payment.Currency, StringComparer.OrdinalIgnoreCase))
         {
             this.logger.LogInformation(
                 "Validator.IsCurrencyCodeValid, PaymentId={PaymentId}, IsValid={IsValid}",
