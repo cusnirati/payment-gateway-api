@@ -53,8 +53,9 @@ dotnet test --project tests/PaymentGatewayApiEndToEndTests
 
 An assembly fixture (`ApiFixture`) polls the healthcheck for 30s before failing. The base URL
 defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to run against
-`dotnet run` instead of the container). The suite takes ~10s because the bank's `503` goes
-through the standard resilience handler's retries. String results (`"ok"`, the payment id,
+`dotnet run` instead of the container). No resilience handler is configured on the bank
+`HttpClient` (it is commented out in `Program.cs`), so the simulator's `503` is not retried.
+String results (`"ok"`, the payment id,
 status names) come back as `text/plain`, not JSON strings.
 
 For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health,
@@ -68,7 +69,7 @@ A `POST /api/payment` flows through one chain, each link behind an interface:
 `PaymentController` assigns a new `PaymentId` GUID, runs all five
 `IPaymentRequestValidator` checks (`Services/PaymentRequestValidator.cs`), then hands off to
 `IBankService` (`Services/BankService.cs`). `BankService` calls `IBankHttpClient`
-(`Services/BankHttpClient.cs`, POSTs to the `SimulatorBankEndpoint`), passes a successful
+(`Services/BankHttpClient.cs`, POSTs to `payments` under `SimulatorBankBaseAddress`), passes a successful
 response to `IBankResponseProcessor` (`Services/BankResponseProcessor.cs`) to map it onto a
 `PostPaymentResponse`, and persists that via `IPostPaymentRepository`
 (`Services/PaymentsRepository.cs`) before returning the status.
@@ -94,9 +95,10 @@ digits are ever stored.
 
 ### Wiring
 
-All DI registration lives in `Program.cs`. Services are scoped; the repository is a
-singleton, as is the `IAmazonDynamoDB` client registered through
-`AddAWSService<IAmazonDynamoDB>()`. New services follow the existing pattern — interface
+All DI registration lives in `Program.cs`. Services are scoped, except `BankHttpClient`,
+a typed client registered through `AddHttpClient<IBankHttpClient, BankHttpClient>()`
+(transient, gets its own `HttpClient`). The repository is a singleton, as is the
+`IAmazonDynamoDB` client registered through `AddAWSService<IAmazonDynamoDB>()`. New services follow the existing pattern — interface
 and implementation in the same file under `Services/` — and get registered there.
 
 Middleware order is `LogMiddleware` then `ErrorMiddleware`.
@@ -127,7 +129,7 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`
   header gets a generated GUID), so never pass them by hand.
 - **Serilog is configured from `src/logconfig.json`, not `appsettings.json`.**
-  `appsettings.json` holds `SimulatorBankEndpoint`, `SupportedCurrencies` (the only
+  `appsettings.json` holds `SimulatorBankBaseAddress`, `SupportedCurrencies` (the only
   currencies `IsCurrencyCodeValid` accepts, matched case-sensitively) and the `AWS` block (pointed at
   `http://localhost:8000` for DynamoDB Local). Verbose file logs go to `src/z-logs/`
   (gitignored); the console sink is deliberately terse.

@@ -56,6 +56,7 @@ public class PaymentController : ControllerBase
     [HttpPost()]
     public async Task<ActionResult<PaymentStatus>> PostPayment([FromBody] PaymentRequest payment)
     {
+        // not idempotent for simplicity
         payment.PaymentId = Guid.NewGuid().ToString();
         this.logger.LogInformation("PostPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Started");
 
