@@ -125,12 +125,13 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   its own. `Nullable` is enabled.
 - **`this.` prefix** on all field access, consistently throughout.
 - **Structured logging** follows one template shape:
-  `"MethodName, PaymentId={PaymentId}, Status={Status}"`, with `Status` values like
+  `"PaymentId={PaymentId}, Operation={Operation}, Status={Status}"`, where `Operation` is
+  the method name passed as an argument (never inlined in the template), with `Status` values like
   `"Started"` / `"Completed"` / `"Failed"`. `CallerId` and `CorrelationId` are enriched
   automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`
   header gets a generated GUID), so never pass them by hand.
 - **Serilog is configured from `src/logconfig.json`, not `appsettings.json`.**
   `appsettings.json` holds `SimulatorBankBaseAddress`, `SupportedCurrencies` (the only
-  currencies `IsCurrencyCodeValid` accepts, matched case-sensitively) and the `AWS` block (pointed at
+  currencies `IsCurrencyCodeValid` accepts, matched case-insensitively) and the `AWS` block (pointed at
   `http://localhost:8000` for DynamoDB Local). Verbose file logs go to `src/z-logs/`
   (gitignored); the console sink is deliberately terse.

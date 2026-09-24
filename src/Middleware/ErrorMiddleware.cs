@@ -26,8 +26,8 @@ public class ErrorMiddleware
         {
             this.logger.LogError(
                 exception,
-                "Unhandled exception, Status={Status}",
-                "Failed");
+                "Operation={Operation}, Status={Status}",
+                "UnhandledException", "Failed");
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
