@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -24,6 +25,19 @@ public class PaymentEndToEndTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("ok", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Healthcheck_CorrelationIdHeader_IsEchoedInResponse()
+    {
+        using HttpRequestMessage request = new(HttpMethod.Get, "api/payment");
+        request.Headers.Add("CorrelationId", "e2e-correlation-id");
+
+        HttpResponseMessage response = await this.client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("CorrelationId", out IEnumerable<string>? values));
+        Assert.Equal("e2e-correlation-id", Assert.Single(values));
     }
 
     [Fact]

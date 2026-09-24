@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Services;
@@ -10,7 +12,21 @@ public class PaymentRequestValidatorTests
 {
     private static readonly DateTime Now = new(2026, 9, 15);
 
-    private readonly PaymentRequestValidator validator = new(NullLogger<PaymentRequestValidator>.Instance);
+    private readonly PaymentRequestValidator validator;
+
+    public PaymentRequestValidatorTests()
+    {
+        IConfiguration config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SupportedCurrencies:0"] = "GBP",
+                ["SupportedCurrencies:1"] = "EUR",
+                ["SupportedCurrencies:2"] = "USD"
+            })
+            .Build();
+
+        this.validator = new PaymentRequestValidator(NullLogger<PaymentRequestValidator>.Instance, config);
+    }
 
     [Theory]
     [InlineData("22224053432488")]      // 14 digits
@@ -101,8 +117,9 @@ public class PaymentRequestValidatorTests
 
     [Theory]
     [InlineData("GBP")]
-    [InlineData("123")] // NOTE: only the length is checked, not that the code is a real currency
-    public void IsCurrencyCodeValid_ThreeCharacters_ReturnsTrue(string currency)
+    [InlineData("EUR")]
+    [InlineData("USD")]
+    public void IsCurrencyCodeValid_SupportedCurrency_ReturnsTrue(string currency)
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
         payment.Currency = currency;
@@ -114,7 +131,10 @@ public class PaymentRequestValidatorTests
     [InlineData("")]
     [InlineData("GB")]
     [InlineData("GBPX")]
-    public void IsCurrencyCodeValid_NotThreeCharacters_ReturnsFalse(string currency)
+    [InlineData("123")]
+    [InlineData("JPY")]
+    [InlineData("gbp")]
+    public void IsCurrencyCodeValid_UnsupportedCurrency_ReturnsFalse(string currency)
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
         payment.Currency = currency;

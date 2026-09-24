@@ -21,6 +21,9 @@ dotnet run --project src/PaymentGatewayApi.csproj    # http://localhost:5067, Sw
 docker build -t payment-gateway-api src/             # container image
 ```
 
+The image runs as the aspnet base image's non-root `app` user (`USER $APP_UID`); only
+`/app/z-logs` is writable by it.
+
 `dotnet run` sets the working directory to `src/`, which is what makes `logconfig.json` and
 the `z-logs/` output path resolve.
 
@@ -125,8 +128,11 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   `"MethodName, PaymentId={PaymentId}, Status={Status}"`, with `Status` values like
   `"Started"` / `"Completed"` / `"Failed"`. `CallerId` and `CorrelationId` are enriched
   automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`
-  header gets a generated GUID), so never pass them by hand.
+  header gets a generated GUID), so never pass them by hand. `LogMiddleware` also echoes the
+  `CorrelationId` back as a response header, set in `Response.OnStarting` so it survives an
+  exception handler clearing the headers.
 - **Serilog is configured from `src/logconfig.json`, not `appsettings.json`.**
-  `appsettings.json` holds `SimulatorBankEndpoint` and the `AWS` block (pointed at
+  `appsettings.json` holds `SimulatorBankEndpoint`, `SupportedCurrencies` (the only
+  currencies `IsCurrencyCodeValid` accepts, matched case-sensitively) and the `AWS` block (pointed at
   `http://localhost:8000` for DynamoDB Local). Verbose file logs go to `src/z-logs/`
   (gitignored); the console sink is deliberately terse.

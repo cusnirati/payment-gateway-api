@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using System.Text.RegularExpressions;
 using PaymentGatewayApi.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace PaymentGatewayApi.Services;
@@ -17,10 +19,12 @@ public interface IPaymentRequestValidator
 public class PaymentRequestValidator : IPaymentRequestValidator
 {
     private readonly ILogger<PaymentRequestValidator> logger;
+    private readonly IConfiguration config;
 
-    public PaymentRequestValidator(ILogger<PaymentRequestValidator> logger)
+    public PaymentRequestValidator(ILogger<PaymentRequestValidator> logger, IConfiguration config)
     {
         this.logger = logger;
+        this.config = config;
     }
 
     public bool IsCardNumberValid(PaymentRequest payment)
@@ -77,8 +81,8 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsCurrencyCodeValid(PaymentRequest payment)
     {
-        // should be a list of accepted currencies, via database, config
-        if (payment.Currency.Length != 3)
+        string[] supportedCurrencies = this.config.GetSection("SupportedCurrencies").Get<string[]>() ?? [];
+        if (!supportedCurrencies.Contains(payment.Currency, StringComparer.Ordinal))
         {
             this.logger.LogInformation(
                 "Validator.IsCurrencyCodeValid, PaymentId={PaymentId}, IsValid={IsValid}",
