@@ -1,6 +1,7 @@
-# CLAUDE.md
+## Ground rules
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+- **Never execute any git commands** unless the user explicitly asks for it in that request.
+- **Never write or modify tests** unless the user explicitly asks for it.
 
 ## Commands
 
