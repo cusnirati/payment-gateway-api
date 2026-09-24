@@ -47,7 +47,7 @@ public class ErrorMiddlewareTests
 
         Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
         string body = ReadBody(context);
-        Assert.Contains("Unhandled exception", body);
-        Assert.Contains("boom", body);
+        Assert.Equal("InternalServerError", body);
+        Assert.DoesNotContain("boom", body);
     }
 }

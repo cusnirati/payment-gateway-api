@@ -53,13 +53,13 @@ public class BankHttpClient : IBankHttpClient
         }
         catch (Exception exception)
         {
-            this.logger.LogError(exception, "PostBankPayment, PaymentId={PaymentId}, Status={Status}", payment.PaymentId, "Failed");
+            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostBankPayment", "Failed");
             return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
         }
 
         this.logger.LogInformation(
-            "PostBankPayment, PaymentId={PaymentId}, StatusCode={StatusCode}",
-            payment.PaymentId, (int)response.StatusCode);
+            "PaymentId={PaymentId}, Operation={Operation}, StatusCode={StatusCode}",
+            payment.PaymentId, "PostBankPayment", (int)response.StatusCode);
 
         return response;
     }

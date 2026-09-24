@@ -33,7 +33,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         }
         catch (Exception exception)
         {
-            this.logger.LogError(exception, "ParseBankResponse exception, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
+            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", request.PaymentId, "ParseBankResponse", "Exception", "Failed");
 
             payResponse.Status = PaymentStatus.InternalError;
             return payResponse;
@@ -41,7 +41,7 @@ public class BankResponseProcessor : IBankResponseProcessor
 
         if (bankResponse is null)
         {
-            this.logger.LogError("ParseBankResponse null response, PaymentId={PaymentId}, Status={Status}", request.PaymentId, "Failed");
+            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", request.PaymentId, "ParseBankResponse", "NullResponse", "Failed");
 
             payResponse.Status = PaymentStatus.InternalError;
             return payResponse;
@@ -57,8 +57,8 @@ public class BankResponseProcessor : IBankResponseProcessor
         payResponse.Amount = request.Amount;
 
         this.logger.LogInformation(
-            "ParseBankResponse, PaymentId={PaymentId}, Status={Status}, Authorized={Authorized}",
-            request.PaymentId, "Completed", bankResponse.Authorized);
+            "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Authorized={Authorized}",
+            request.PaymentId, "ParseBankResponse", "Completed", bankResponse.Authorized);
 
         return payResponse;
     }

@@ -119,6 +119,7 @@ public class PaymentRequestValidatorTests
     [InlineData("GBP")]
     [InlineData("EUR")]
     [InlineData("USD")]
+    [InlineData("gbp")]
     public void IsCurrencyCodeValid_SupportedCurrency_ReturnsTrue(string currency)
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
@@ -133,7 +134,6 @@ public class PaymentRequestValidatorTests
     [InlineData("GBPX")]
     [InlineData("123")]
     [InlineData("JPY")]
-    [InlineData("gbp")]
     public void IsCurrencyCodeValid_UnsupportedCurrency_ReturnsFalse(string currency)
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();

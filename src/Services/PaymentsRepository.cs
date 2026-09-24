@@ -46,8 +46,8 @@ public class PaymentsRepository : IPaymentsRepository
             // from the merchant; log the raw item instead so it can be reconciled
             this.logger.LogError(
                 exception,
-                "AddPayment, PaymentId={PaymentId}, Status={Status}, PaymentRaw={PaymentRaw}",
-                payment.PaymentId, "Failed", item["PaymentRaw"].S);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentRaw={PaymentRaw}",
+                payment.PaymentId, "AddPayment", "Failed", item["PaymentRaw"].S);
         }
     }
 
@@ -78,7 +78,7 @@ public class PaymentsRepository : IPaymentsRepository
         catch (Exception exception)
         {
             // rethrow so ErrorMiddleware answers 500: returning null would report an unreadable payment as not found
-            this.logger.LogError(exception, "GetPayment, PaymentId={PaymentId}, Status={Status}", paymentId, "Failed");
+            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Failed");
             throw;
         }
 
@@ -88,7 +88,7 @@ public class PaymentsRepository : IPaymentsRepository
         }
         else
         {
-            this.logger.LogInformation("GetPayment, PaymentId={PaymentId}, Status={Status}", paymentId, "NotFound");
+            this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "NotFound");
 
             return null;
         }
