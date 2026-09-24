@@ -39,7 +39,6 @@ public class PaymentController : ControllerBase
         return new OkObjectResult("ok");
     }
 
-    // curl -k http://localhost:5067/api/payment/16bd4749-d150-48d1-a3ce-257457d74d1f
     [HttpGet("{paymentId}")]
     public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId)
     {

@@ -31,8 +31,8 @@ public class ErrorMiddleware
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-            // see if can replace message with correlationId
-            await context.Response.WriteAsync($"Unhandled exception\n{exception.Message}\n");
+            // or replace message with correlationId
+            await context.Response.WriteAsync($"InternalServerError");
 
             return;
         }
