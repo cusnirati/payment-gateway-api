@@ -125,9 +125,7 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   `"MethodName, PaymentId={PaymentId}, Status={Status}"`, with `Status` values like
   `"Started"` / `"Completed"` / `"Failed"`. `CallerId` and `CorrelationId` are enriched
   automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`
-  header gets a generated GUID), so never pass them by hand. `LogMiddleware` also echoes the
-  `CorrelationId` back as a response header, set in `Response.OnStarting` so it survives an
-  exception handler clearing the headers.
+  header gets a generated GUID), so never pass them by hand.
 - **Serilog is configured from `src/logconfig.json`, not `appsettings.json`.**
   `appsettings.json` holds `SimulatorBankEndpoint`, `SupportedCurrencies` (the only
   currencies `IsCurrencyCodeValid` accepts, matched case-sensitively) and the `AWS` block (pointed at

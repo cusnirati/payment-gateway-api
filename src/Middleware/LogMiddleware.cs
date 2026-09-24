@@ -29,13 +29,6 @@ public class LogMiddleware
             correlationId = Guid.NewGuid().ToString();
         }
 
-        // set when the response starts, so it survives an exception handler clearing the headers
-        context.Response.OnStarting(() =>
-        {
-            context.Response.Headers["CorrelationId"] = correlationId;
-            return Task.CompletedTask;
-        });
-
         using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"]))
         using (LogContext.PushProperty("CorrelationId", correlationId))
         {
