@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Ground rules
+
+- **Never commit** (or amend, push, or otherwise write git history) unless the user explicitly
+  asks for it in that request. Finishing a change is not permission to commit it.
+- **Never write or modify tests** unless the user explicitly asks for it. This includes
+  adding new tests alongside a code change and updating existing ones, even `// NOTE: defect`
+  tests. If a change breaks or should be covered by tests, say so instead.
+
 ## Commands
 
 The API cannot run without its two local dependencies. Start them first, **from `src/`**
