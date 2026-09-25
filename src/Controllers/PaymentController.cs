@@ -54,7 +54,7 @@ public class PaymentController : ControllerBase
     }
 
     [HttpPost()]
-    public async Task<ActionResult<PaymentStatus>> PostPayment([FromBody] PaymentRequest payment)
+    public async Task<ActionResult<PostPaymentResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
         // not idempotent for simplicity
         payment.PaymentId = Guid.NewGuid().ToString();
@@ -74,12 +74,13 @@ public class PaymentController : ControllerBase
 
         // good place to split into a separate service if validation would include fraud detection, sanction screening, etc
 
-        var status = await this.bankService.ExecutePayment(payment);
-        if (status == PaymentStatus.Authorized)
+        // a declined payment was still processed by the bank, so it is answered like an authorized one
+        var paymentResponse = await this.bankService.ExecutePayment(payment);
+        if (paymentResponse.Status == PaymentStatus.Authorized || paymentResponse.Status == PaymentStatus.Declined)
         {
-            return new OkObjectResult(payment.PaymentId);
+            return new OkObjectResult(paymentResponse);
         }
 
-        return new BadRequestObjectResult(status.ToString());
+        return new BadRequestObjectResult(paymentResponse.Status.ToString());
     }
 }

@@ -19,6 +19,6 @@ public class PaymentRequest
     public int ExpiryMonth { get; set; }
     public int ExpiryYear { get; set; }
 
-    public decimal Amount { get; set; }
+    public long Amount { get; set; }
     public string? PaymentId { get; set; }
 }

@@ -9,7 +9,7 @@ namespace PaymentGatewayApi.Services;
 
 public interface IBankService
 {
-    Task<PaymentStatus> ExecutePayment(PaymentRequest payment);
+    Task<PostPaymentResponse> ExecutePayment(PaymentRequest payment);
 }
 
 public class BankService : IBankService
@@ -28,7 +28,7 @@ public class BankService : IBankService
         this.paymentRepo = paymentRepo;
     }
 
-    public async Task<PaymentStatus> ExecutePayment(PaymentRequest payment)
+    public async Task<PostPaymentResponse> ExecutePayment(PaymentRequest payment)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "ExecuteBankPayment", "Started");
 
@@ -49,7 +49,7 @@ public class BankService : IBankService
 
             await this.paymentRepo.Update(paymentResponse);
 
-            return paymentResponse.Status;
+            return paymentResponse;
         }
         else
         {
@@ -58,7 +58,7 @@ public class BankService : IBankService
             pending.Status = PaymentStatus.InternalError;
             await this.paymentRepo.Update(pending);
 
-            return PaymentStatus.InternalError;
+            return pending;
         }
     }
 

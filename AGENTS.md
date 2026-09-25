@@ -58,7 +58,7 @@ An assembly fixture (`ApiFixture`) polls the healthcheck for 30s before failing.
 defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to run against
 `dotnet run` instead of the container). No resilience handler is configured on the bank
 `HttpClient` (it is commented out in `Program.cs`), so the simulator's `503` is not retried.
-String results (`"ok"`, the payment id,
+String results (`"ok"`, rejected/error
 status names) come back as `text/plain`, not JSON strings.
 
 For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health,
@@ -77,7 +77,7 @@ so the bank is never called), then calls `IBankHttpClient` (`Services/BankHttpCl
 `payments` under `SimulatorBankBaseAddress`), passes a successful response to
 `IBankResponseProcessor` (`Services/BankResponseProcessor.cs`) to map it onto a
 `PostPaymentResponse`, and overwrites the record with the final status via
-`IPaymentsRepository.Update` (which logs rather than throws) before returning the status.
+`IPaymentsRepository.Update` (which logs rather than throws) before returning it.
 
 `PaymentStatus` (`Models/PaymentStatus.cs`) is the contract between layers:
 

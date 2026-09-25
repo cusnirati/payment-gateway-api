@@ -29,11 +29,38 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsCardNumberValid(PaymentRequest payment)
     {
-        if (!Regex.IsMatch(payment.CardNumber, @"^\d{14,19}$"))
+        // [0-9] rather than \d, which also matches non-ASCII digits and would break the Luhn arithmetic below
+        if (!Regex.IsMatch(payment.CardNumber, @"^[0-9]{14,19}$"))
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsCardNumberValid", false);
+            return false;
+        }
+
+        // Luhn check: from the rightmost digit, double every second digit (subtracting 9 when it exceeds 9),
+        // the total must be a multiple of 10
+        int sum = 0;
+        for (int i = 0; i < payment.CardNumber.Length; i++)
+        {
+            int digit = payment.CardNumber[payment.CardNumber.Length - 1 - i] - '0';
+            if (i % 2 == 1)
+            {
+                digit *= 2;
+                if (digit > 9)
+                {
+                    digit -= 9;
+                }
+            }
+
+            sum += digit;
+        }
+
+        if (sum % 10 != 0)
+        {
+            this.logger.LogInformation(
+                "PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, IsValid={IsValid}",
+                payment.PaymentId, "Validator.IsCardNumberValid", "LuhnCheck", false);
             return false;
         }
 

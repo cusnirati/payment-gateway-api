@@ -20,6 +20,6 @@ public class BankRequest
     public required string ExpiryDate { get; set; }
 
     public required string Currency { get; set; }
-    public decimal Amount { get; set; }
+    public long Amount { get; set; }
     public required string Cvv { get; set; }
 }
