@@ -2,6 +2,8 @@
 
 - **Never execute any git commands** unless the user explicitly asks for it in that request.
 - **Never write or modify tests** unless the user explicitly asks for it.
+- **Never add private methods** unless for tests.
+- **Never add cancellation tokens** unless the user explicitly asks for it.
 
 ## Commands
 
