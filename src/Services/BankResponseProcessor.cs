@@ -55,7 +55,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         payResponse.ExpiryYear = request.ExpiryYear;
         payResponse.Currency = request.Currency;
         payResponse.Amount = request.Amount;
-        payResponse.AuthorizationCode = bankResponse.AuthorizationCode;
+        payResponse.BankAuthorizationCode = bankResponse.AuthorizationCode;
 
         this.logger.LogInformation(
             "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Authorized={Authorized}",

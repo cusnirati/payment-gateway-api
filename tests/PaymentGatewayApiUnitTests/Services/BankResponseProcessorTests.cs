@@ -37,7 +37,7 @@ public class BankResponseProcessorTests
         Assert.Equal(2027, result.ExpiryYear);
         Assert.Equal("GBP", result.Currency);
         Assert.Equal(100, result.Amount);
-        Assert.Equal("0bb07405-6d44-4b50-a14f-7ae0beff13ad", result.AuthorizationCode);
+        Assert.Equal("0bb07405-6d44-4b50-a14f-7ae0beff13ad", result.BankAuthorizationCode);
     }
 
     [Fact]
