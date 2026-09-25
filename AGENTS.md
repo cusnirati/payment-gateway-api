@@ -69,17 +69,20 @@ A `POST /api/payment` flows through one chain, each link behind an interface:
 
 `PaymentController` assigns a new `PaymentId` GUID, runs all five
 `IPaymentRequestValidator` checks (`Services/PaymentRequestValidator.cs`), then hands off to
-`IBankService` (`Services/BankService.cs`). `BankService` calls `IBankHttpClient`
-(`Services/BankHttpClient.cs`, POSTs to `payments` under `SimulatorBankBaseAddress`), passes a successful
-response to `IBankResponseProcessor` (`Services/BankResponseProcessor.cs`) to map it onto a
-`PostPaymentResponse`, and persists that via `IPostPaymentRepository`
-(`Services/PaymentsRepository.cs`) before returning the status.
+`IBankService` (`Services/BankService.cs`). `BankService` first persists the payment as
+`Pending` via `IPaymentsRepository.Add` (`Services/PaymentsRepository.cs`; a failure there throws,
+so the bank is never called), then calls `IBankHttpClient` (`Services/BankHttpClient.cs`, POSTs to
+`payments` under `SimulatorBankBaseAddress`), passes a successful response to
+`IBankResponseProcessor` (`Services/BankResponseProcessor.cs`) to map it onto a
+`PostPaymentResponse`, and overwrites the record with the final status via
+`IPaymentsRepository.Update` (which logs rather than throws) before returning the status.
 
 `PaymentStatus` (`Models/PaymentStatus.cs`) is the contract between layers:
 
 - `Rejected` — local validation failed; the bank was never called.
 - `Declined` — the bank answered `authorized: false`.
 - `InternalError` — the bank returned non-2xx, or its body could not be parsed.
+- `Pending` — persisted before the bank is called; replaced by the final status once it answers.
 
 ### Models come in two pairs, deliberately
 
@@ -91,8 +94,8 @@ them separate — collapsing them couples our public API to the bank's.
 ### Persistence
 
 DynamoDB table `Payments`, hash key `PaymentId`. Each item is just `PaymentId` (S) plus
-`PaymentRaw` (S) holding the JSON-serialized `PostPaymentResponse`. Only the last four card
-digits are ever stored.
+`PaymentRaw` (S) holding the JSON-serialized `PostPaymentResponse` (including the bank's
+`AuthorizationCode`). Only the last four card digits are ever stored.
 
 ### Wiring
 

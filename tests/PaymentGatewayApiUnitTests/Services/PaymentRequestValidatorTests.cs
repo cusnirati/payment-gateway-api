@@ -72,6 +72,8 @@ public class PaymentRequestValidatorTests
     [InlineData(12, 2025)]
     [InlineData(0, 2027)]
     [InlineData(13, 2027)]
+    [InlineData(11, 0)]     // out of DateTime range
+    [InlineData(11, 10000)] // more than four digits
     public void IsExpiryValid_PastExpiryOrInvalidMonth_ReturnsFalse(int month, int year)
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
@@ -79,17 +81,6 @@ public class PaymentRequestValidatorTests
         payment.ExpiryYear = year;
 
         Assert.False(this.validator.IsExpiryValid(payment, Now));
-    }
-
-    [Fact]
-    public void IsExpiryValid_YearZero_Throws()
-    {
-        // NOTE: defect - an out of range year is not validated, so new DateTime(0, ...) throws
-        // instead of the payment being rejected
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.ExpiryYear = 0;
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => this.validator.IsExpiryValid(payment, Now));
     }
 
     [Theory]
