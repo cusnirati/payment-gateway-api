@@ -100,16 +100,14 @@ public class PaymentEndToEndTests
     }
 
     [Fact]
-    public async Task PostPayment_ExpiryYearZero_ReturnsInternalServerError()
+    public async Task PostPayment_ExpiryYearZero_Rejected()
     {
-        // NOTE: defect - an out of range year is not validated, the validator throws and
-        // ErrorMiddleware answers 500 instead of the payment being rejected
         PaymentRequest payment = TestData.ValidPaymentRequest(TestData.AuthorizedCard);
         payment.ExpiryYear = 0;
 
         HttpResponseMessage response = await this.client.PostAsJsonAsync("api/payment", payment, TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        await AssertBadRequest(response, PaymentStatus.Rejected);
     }
 
     [Fact]

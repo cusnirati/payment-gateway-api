@@ -32,7 +32,7 @@ public class BankHttpClient : IBankHttpClient
     public async Task<HttpResponseMessage> PostBankPayment(PaymentRequest payment)
     {
         // "04/2025"
-        string expiry = $"{payment.ExpiryMonth}/{payment.ExpiryYear}";
+        string expiry = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}";
         BankRequest request = new()
         {
             CardNumber = payment.CardNumber,

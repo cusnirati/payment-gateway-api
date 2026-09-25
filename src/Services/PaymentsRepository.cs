@@ -14,6 +14,7 @@ namespace PaymentGatewayApi.Services;
 public interface IPaymentsRepository
 {
     Task Add(PostPaymentResponse payment);
+    Task Update(PostPaymentResponse payment);
     Task<PostPaymentResponse?> Get(string paymentId);
 }
 
@@ -30,11 +31,23 @@ public class PaymentsRepository : IPaymentsRepository
 
     public async Task Add(PostPaymentResponse payment)
     {
-        var item = new Dictionary<string, AttributeValue>
+        Dictionary<string, AttributeValue> item = ToItem(payment);
+
+        try
         {
-            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
-        };
+            await this.dynamo.PutItemAsync("Payments", item);
+        }
+        catch (Exception exception)
+        {
+            // rethrow so ErrorMiddleware answers 500: the bank must not be called for a payment we could not record
+            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "AddPayment", "Failed");
+            throw;
+        }
+    }
+
+    public async Task Update(PostPaymentResponse payment)
+    {
+        Dictionary<string, AttributeValue> item = ToItem(payment);
 
         try
         {
@@ -47,7 +60,7 @@ public class PaymentsRepository : IPaymentsRepository
             this.logger.LogError(
                 exception,
                 "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentRaw={PaymentRaw}",
-                payment.PaymentId, "AddPayment", "Failed", item["PaymentRaw"].S);
+                payment.PaymentId, "UpdatePayment", "Failed", item["PaymentRaw"].S);
         }
     }
 
@@ -92,5 +105,14 @@ public class PaymentsRepository : IPaymentsRepository
 
             return null;
         }
+    }
+
+    private static Dictionary<string, AttributeValue> ToItem(PostPaymentResponse payment)
+    {
+        return new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
+            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
+        };
     }
 }

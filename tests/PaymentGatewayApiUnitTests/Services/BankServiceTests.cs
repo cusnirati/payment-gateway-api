@@ -1,3 +1,4 @@
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -48,13 +49,57 @@ public class BankServiceTests
         PaymentStatus result = await this.service.ExecutePayment(payment);
 
         Assert.Equal(status, result);
-        this.paymentRepo.Verify(r => r.Add(parsed), Times.Once);
+        this.paymentRepo.Verify(r => r.Add(It.IsAny<PostPaymentResponse>()), Times.Once);
+        this.paymentRepo.Verify(r => r.Update(parsed), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecutePayment_PersistsPendingBeforeCallingBank()
+    {
+        PaymentRequest payment = TestData.ValidPaymentRequest();
+        PostPaymentResponse? pending = null;
+        PaymentStatus? pendingStatus = null;
+        bool bankCalledBeforeAdd = false;
+        this.paymentRepo
+            .Setup(r => r.Add(It.IsAny<PostPaymentResponse>()))
+            .Callback<PostPaymentResponse>(p =>
+            {
+                pending = p;
+                pendingStatus = p.Status;
+                bankCalledBeforeAdd = this.bankHttpClient.Invocations.Count > 0;
+            })
+            .Returns(Task.CompletedTask);
+        this.SetupBank(payment, HttpStatusCode.OK, new PostPaymentResponse { PaymentId = payment.PaymentId, Status = PaymentStatus.Authorized });
+
+        await this.service.ExecutePayment(payment);
+
+        Assert.NotNull(pending);
+        Assert.False(bankCalledBeforeAdd);
+        Assert.Equal(PaymentStatus.Pending, pendingStatus);
+        Assert.Equal(TestData.PaymentId, pending.PaymentId);
+        Assert.Equal("8873", pending.CardNumberLastFour);
+        Assert.Equal(payment.ExpiryMonth, pending.ExpiryMonth);
+        Assert.Equal(payment.ExpiryYear, pending.ExpiryYear);
+        Assert.Equal(payment.Currency, pending.Currency);
+        Assert.Equal(payment.Amount, pending.Amount);
+    }
+
+    [Fact]
+    public async Task ExecutePayment_PendingPersistFails_ThrowsWithoutCallingBank()
+    {
+        PaymentRequest payment = TestData.ValidPaymentRequest();
+        this.paymentRepo.Setup(r => r.Add(It.IsAny<PostPaymentResponse>())).ThrowsAsync(new InvalidOperationException());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => this.service.ExecutePayment(payment));
+
+        this.bankHttpClient.Verify(c => c.PostBankPayment(It.IsAny<PaymentRequest>()), Times.Never);
+        this.paymentRepo.Verify(r => r.Update(It.IsAny<PostPaymentResponse>()), Times.Never);
     }
 
     [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.BadRequest)]
-    public async Task ExecutePayment_BankReturnsNonSuccess_ReturnsInternalErrorWithoutPersisting(HttpStatusCode statusCode)
+    public async Task ExecutePayment_BankReturnsNonSuccess_PersistsInternalError(HttpStatusCode statusCode)
     {
         PaymentRequest payment = TestData.ValidPaymentRequest();
         this.SetupBank(payment, statusCode);
@@ -64,14 +109,14 @@ public class BankServiceTests
         Assert.Equal(PaymentStatus.InternalError, result);
         this.responseProcessor.Verify(
             p => p.ParseBankResponse(It.IsAny<PaymentRequest>(), It.IsAny<HttpResponseMessage>()), Times.Never);
-        this.paymentRepo.Verify(r => r.Add(It.IsAny<PostPaymentResponse>()), Times.Never);
+        this.paymentRepo.Verify(
+            r => r.Update(It.Is<PostPaymentResponse>(p => p.PaymentId == TestData.PaymentId && p.Status == PaymentStatus.InternalError)),
+            Times.Once);
     }
 
     [Fact]
-    public async Task ExecutePayment_BankBodyUnparseable_StillPersistsResponseWithoutPaymentId()
+    public async Task ExecutePayment_BankBodyUnparseable_PersistsInternalErrorWithPaymentDetails()
     {
-        // NOTE: defect - when the bank body cannot be parsed the processor returns a response with only
-        // Status set, and BankService persists it anyway, with a null PaymentId as the DynamoDB hash key
         PaymentRequest payment = TestData.ValidPaymentRequest();
         PostPaymentResponse parsed = new() { Status = PaymentStatus.InternalError };
         this.SetupBank(payment, HttpStatusCode.OK, parsed);
@@ -79,6 +124,9 @@ public class BankServiceTests
         PaymentStatus result = await this.service.ExecutePayment(payment);
 
         Assert.Equal(PaymentStatus.InternalError, result);
-        this.paymentRepo.Verify(r => r.Add(It.Is<PostPaymentResponse>(p => p.PaymentId == null)), Times.Once);
+        this.paymentRepo.Verify(
+            r => r.Update(It.Is<PostPaymentResponse>(p =>
+                p.PaymentId == TestData.PaymentId && p.Status == PaymentStatus.InternalError && p.CardNumberLastFour == "8873")),
+            Times.Once);
     }
 }

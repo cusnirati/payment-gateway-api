@@ -52,8 +52,10 @@ public class PaymentRequestValidator : IPaymentRequestValidator
             return false;
         }
 
-        var expiry = new DateTime(payment.ExpiryYear, payment.ExpiryMonth, 1);
-        if (expiry < new DateTime(now.Year, now.Month, 1))
+        // compared as numbers, not as a DateTime, so an out of range year is rejected instead of throwing;
+        // the bank expects a four digit year
+        bool isExpired = payment.ExpiryYear < now.Year || (payment.ExpiryYear == now.Year && payment.ExpiryMonth < now.Month);
+        if (isExpired || payment.ExpiryYear > 9999)
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
