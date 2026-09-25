@@ -1,4 +1,3 @@
-z-notes.md
 *.swp
 
 bin/
@@ -6,6 +5,3 @@ obj/
 .vscode/
 
 src/z-logs/*.log
-
-deploy/aws/*
-!deploy/aws/.gitkeep
