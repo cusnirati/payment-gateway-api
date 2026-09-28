@@ -33,7 +33,16 @@ public class BankService : IBankService
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "ExecuteBankPayment", "Started");
 
         // record the payment before the bank is called, a failure here throws and the bank is never called
-        PostPaymentResponse pending = CreatePending(payment);
+        PostPaymentResponse pending = new PostPaymentResponse
+        {
+            PaymentId = payment.PaymentId,
+            Status = PaymentStatus.Pending,
+            CardNumberLastFour = payment.CardNumber.Substring(payment.CardNumber.Length - 4),
+            ExpiryMonth = payment.ExpiryMonth,
+            ExpiryYear = payment.ExpiryYear,
+            Currency = payment.Currency,
+            Amount = payment.Amount
+        };
         await this.paymentRepo.Add(pending);
 
         HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(payment);
@@ -60,19 +69,5 @@ public class BankService : IBankService
 
             return pending;
         }
-    }
-
-    private static PostPaymentResponse CreatePending(PaymentRequest payment)
-    {
-        return new PostPaymentResponse
-        {
-            PaymentId = payment.PaymentId,
-            Status = PaymentStatus.Pending,
-            CardNumberLastFour = payment.CardNumber.Substring(payment.CardNumber.Length - 4),
-            ExpiryMonth = payment.ExpiryMonth,
-            ExpiryYear = payment.ExpiryYear,
-            Currency = payment.Currency,
-            Amount = payment.Amount
-        };
     }
 }
