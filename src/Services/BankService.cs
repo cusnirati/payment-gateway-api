@@ -28,7 +28,6 @@ public class BankService : IBankService
         this.paymentRepo = paymentRepo;
     }
 
-    // todo split into PendingPayments and CompletedPayments
     public async Task<PostPaymentResponse> ExecutePayment(PaymentRequest payment)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "ExecuteBankPayment", "Started");
@@ -57,7 +56,7 @@ public class BankService : IBankService
                 paymentResponse = pending;
             }
 
-            await this.paymentRepo.Update(paymentResponse);
+            await this.paymentRepo.Complete(paymentResponse);
 
             return paymentResponse;
         }
@@ -66,7 +65,7 @@ public class BankService : IBankService
             this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "ExecuteBankPayment", "Failed");
 
             pending.Status = PaymentStatus.InternalError;
-            await this.paymentRepo.Update(pending);
+            await this.paymentRepo.Complete(pending);
 
             return pending;
         }

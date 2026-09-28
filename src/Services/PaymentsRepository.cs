@@ -15,7 +15,7 @@ public interface IPaymentsRepository
 {
     Task<PostPaymentResponse?> Get(string paymentId);
     Task Add(PostPaymentResponse payment);
-    Task Update(PostPaymentResponse payment);
+    Task Complete(PostPaymentResponse payment);
 }
 
 public class PaymentsRepository : IPaymentsRepository
@@ -39,9 +39,16 @@ public class PaymentsRepository : IPaymentsRepository
         PostPaymentResponse? payment = null;
         try
         {
-            GetItemRequest request = new() { Key = dynamoKey, TableName = "Payments" };
+            // completed first, it is where almost every payment ends up; fall back to pending for in-flight ones
+            GetItemRequest request = new() { Key = dynamoKey, TableName = "CompletedPayments" };
 
             GetItemResponse response = await this.dynamo.GetItemAsync(request);
+            if (response.Item == null || !response.Item.Any())
+            {
+                request = new() { Key = dynamoKey, TableName = "PendingPayments" };
+                response = await this.dynamo.GetItemAsync(request);
+            }
+
             if (response.Item != null && response.Item.Any())
             {
                 string raw = response.Item["PaymentRaw"].S;
@@ -68,7 +75,7 @@ public class PaymentsRepository : IPaymentsRepository
 
         try
         {
-            await this.dynamo.PutItemAsync("Payments", item);
+            await this.dynamo.PutItemAsync("PendingPayments", item);
         }
         catch (Exception exception)
         {
@@ -78,7 +85,7 @@ public class PaymentsRepository : IPaymentsRepository
         }
     }
 
-    public async Task Update(PostPaymentResponse payment)
+    public async Task Complete(PostPaymentResponse payment)
     {
         Dictionary<string, AttributeValue> item = new Dictionary<string, AttributeValue>
         {
@@ -86,18 +93,36 @@ public class PaymentsRepository : IPaymentsRepository
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
         };
 
+        // move the payment in one transaction, so it is never in both tables or in neither
+        TransactWriteItemsRequest request = new()
+        {
+            TransactItems = new List<TransactWriteItem>
+            {
+                new() { Put = new Put { TableName = "CompletedPayments", Item = item } },
+                new()
+                {
+                    Delete = new Delete
+                    {
+                        TableName = "PendingPayments",
+                        Key = new Dictionary<string, AttributeValue> { ["PaymentId"] = new AttributeValue { S = payment.PaymentId } }
+                    }
+                }
+            }
+        };
+
         try
         {
-            await this.dynamo.PutItemAsync("Payments", item);
+            await this.dynamo.TransactWriteItemsAsync(request);
         }
         catch (Exception exception)
         {
             // the bank has already answered, so throwing back 500 here would hide an authorized payment
+            // the payment stays in PendingPayments, which is what reconciliation picks up; PaymentRaw keeps the bank outcome
             // we would have an alert in monitoring for this scenario, should never happen
             this.logger.LogError(
                 exception,
                 "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentRaw={PaymentRaw}",
-                payment.PaymentId, "UpdatePayment", "Failed", item["PaymentRaw"].S);
+                payment.PaymentId, "CompletePayment", "Failed", item["PaymentRaw"].S);
         }
     }
 }
