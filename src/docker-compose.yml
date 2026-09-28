@@ -1,10 +1,46 @@
+  # 2 modes to run this compose file:
+  #    "docker compose up" only starts the simulator and dynamodb instance to debug / run the api
+  #    "docker compose --profile api up" starts the simulator + api + dynamodb instance
+
 services:
+  # https://github.com/wiremock/wiremock
+  bank-simulator-wiremock:
+    container_name: bank-simulator-wiremock
+    image: wiremock/wiremock:3.13.2
+    depends_on:
+      - dynamodb-init
+    ports:
+      - "8080:8080"
+    command: --global-response-templating --verbose
+    volumes:
+      - type: bind
+        source: ./Simulators/wiremock
+        target: /home/wiremock
+
+
+  payment-gateway-api:
+    container_name: payment-gateway-api
+    profiles: ["api"]
+    build: .
+    ports:
+      - "5067:8080"
+    environment:
+      SimulatorBankBaseAddress: "http://bank-simulator-wiremock:8080"
+      AWS__ServiceURL: "http://dynamodb:8000"
+      AWS_ACCESS_KEY_ID: "dummy"
+      AWS_SECRET_ACCESS_KEY: "dummy"
+    depends_on:
+      - dynamodb-init
+      - bank-simulator-wiremock
+
+
   dynamodb:
     container_name: dynamodb-local
     image: amazon/dynamodb-local:3.3.1
     ports:
       - "8000:8000"
     command: "-jar DynamoDBLocal.jar -sharedDb"
+
 
   dynamodb-init:
     image: amazon/aws-cli:2.36.46
@@ -41,37 +77,3 @@ services:
         --table-class STANDARD > /dev/null 2>&1
 
         echo "local dynamodb setup completed"
-
-  # https://github.com/wiremock/wiremock
-  bank-simulator-wiremock:
-    container_name: bank-simulator-wiremock
-    image: wiremock/wiremock:3.13.2
-    depends_on:
-      dynamodb-init:
-        condition: service_completed_successfully
-    ports:
-      - "8080:8080"
-    command: --global-response-templating --verbose
-    volumes:
-      - type: bind
-        source: ./Simulators/wiremock
-        target: /home/wiremock
-
-  # "docker compose up" still only starts the simulator and dynamodb instance in case you want to debug / run the api separately
-  # docker compose --profile api up -d --build
-  payment-gateway-api:
-    container_name: payment-gateway-api
-    profiles: ["api"]
-    build: .
-    ports:
-      - "5067:8080"
-    environment:
-      SimulatorBankBaseAddress: "http://bank-simulator-wiremock:8080"
-      AWS__ServiceURL: "http://dynamodb:8000"
-      AWS_ACCESS_KEY_ID: "dummy"
-      AWS_SECRET_ACCESS_KEY: "dummy"
-    depends_on:
-      dynamodb-init:
-        condition: service_completed_successfully
-      bank-simulator-wiremock:
-        condition: service_started
