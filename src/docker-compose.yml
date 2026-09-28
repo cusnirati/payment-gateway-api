@@ -24,7 +24,16 @@ services:
 
         aws dynamodb create-table \
         --endpoint-url http://dynamodb:8000 \
-        --table-name Payments \
+        --table-name PendingPayments \
+        --attribute-definitions \
+            AttributeName=PaymentId,AttributeType=S \
+        --key-schema AttributeName=PaymentId,KeyType=HASH \
+        --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
+        --table-class STANDARD > /dev/null 2>&1
+
+        aws dynamodb create-table \
+        --endpoint-url http://dynamodb:8000 \
+        --table-name CompletedPayments \
         --attribute-definitions \
             AttributeName=PaymentId,AttributeType=S \
         --key-schema AttributeName=PaymentId,KeyType=HASH \

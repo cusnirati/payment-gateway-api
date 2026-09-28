@@ -13,9 +13,9 @@ namespace PaymentGatewayApi.Services;
 
 public interface IPaymentsRepository
 {
-    Task Add(PostPaymentResponse payment);
-    Task Update(PostPaymentResponse payment);
     Task<PostPaymentResponse?> Get(string paymentId);
+    Task Add(PostPaymentResponse payment);
+    Task Complete(PostPaymentResponse payment);
 }
 
 public class PaymentsRepository : IPaymentsRepository
@@ -29,49 +29,6 @@ public class PaymentsRepository : IPaymentsRepository
         this.dynamo = dynamo;
     }
 
-    public async Task Add(PostPaymentResponse payment)
-    {
-        var item = new Dictionary<string, AttributeValue>
-        {
-            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
-        };
-
-        try
-        {
-            await this.dynamo.PutItemAsync("Payments", item);
-        }
-        catch (Exception exception)
-        {
-            // rethrow so ErrorMiddleware answers 500: the bank must not be called for a payment we could not record
-            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "AddPayment", "Failed");
-            throw;
-        }
-    }
-
-    public async Task Update(PostPaymentResponse payment)
-    {
-        Dictionary<string, AttributeValue> item = new Dictionary<string, AttributeValue>
-        {
-            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
-        };
-
-        try
-        {
-            await this.dynamo.PutItemAsync("Payments", item);
-        }
-        catch (Exception exception)
-        {
-            // the bank has already answered, so throwing back 500 here would hide an authorized payment
-            // we would have an alert in monitoring for this scenario, should never happen
-            this.logger.LogError(
-                exception,
-                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentRaw={PaymentRaw}",
-                payment.PaymentId, "UpdatePayment", "Failed", item["PaymentRaw"].S);
-        }
-    }
-
     public async Task<PostPaymentResponse?> Get(string paymentId)
     {
         var dynamoKey = new Dictionary<string, AttributeValue>
@@ -82,9 +39,16 @@ public class PaymentsRepository : IPaymentsRepository
         PostPaymentResponse? payment = null;
         try
         {
-            GetItemRequest request = new() { Key = dynamoKey, TableName = "Payments" };
+            // completed first, it is where almost every payment ends up; fall back to pending for in-flight ones
+            GetItemRequest request = new() { Key = dynamoKey, TableName = "CompletedPayments" };
 
             GetItemResponse response = await this.dynamo.GetItemAsync(request);
+            if (response.Item == null || !response.Item.Any())
+            {
+                request = new() { Key = dynamoKey, TableName = "PendingPayments" };
+                response = await this.dynamo.GetItemAsync(request);
+            }
+
             if (response.Item != null && response.Item.Any())
             {
                 string raw = response.Item["PaymentRaw"].S;
@@ -93,11 +57,72 @@ public class PaymentsRepository : IPaymentsRepository
         }
         catch (Exception exception)
         {
-            // throw so ErrorMiddleware answers 500: returning null would report an unreadable payment as not found
+            // throw so ErrorMiddleware.cs answers http 500: returning null would report an unreadable payment as not found
             this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Failed");
             throw;
         }
 
         return payment;
+    }
+
+    public async Task Add(PostPaymentResponse payment)
+    {
+        var item = new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
+            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
+        };
+
+        try
+        {
+            await this.dynamo.PutItemAsync("PendingPayments", item);
+        }
+        catch (Exception exception)
+        {
+            // rethrow so ErrorMiddleware answers 500: the bank must not be called for a payment we could not record
+            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "AddPayment", "Failed");
+            throw;
+        }
+    }
+
+    public async Task Complete(PostPaymentResponse payment)
+    {
+        Dictionary<string, AttributeValue> item = new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
+            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
+        };
+
+        // move the payment in one transaction, so it is never in both tables or in neither
+        TransactWriteItemsRequest request = new()
+        {
+            TransactItems = new List<TransactWriteItem>
+            {
+                new() { Put = new Put { TableName = "CompletedPayments", Item = item } },
+                new()
+                {
+                    Delete = new Delete
+                    {
+                        TableName = "PendingPayments",
+                        Key = new Dictionary<string, AttributeValue> { ["PaymentId"] = new AttributeValue { S = payment.PaymentId } }
+                    }
+                }
+            }
+        };
+
+        try
+        {
+            await this.dynamo.TransactWriteItemsAsync(request);
+        }
+        catch (Exception exception)
+        {
+            // the bank has already answered, so throwing back 500 here would hide an authorized payment
+            // the payment stays in PendingPayments, which is what reconciliation picks up; PaymentRaw keeps the bank outcome
+            // we would have an alert in monitoring for this scenario, should never happen
+            this.logger.LogError(
+                exception,
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentRaw={PaymentRaw}",
+                payment.PaymentId, "CompletePayment", "Failed", item["PaymentRaw"].S);
+        }
     }
 }

@@ -14,7 +14,8 @@ The API cannot run without its two local dependencies. Start them first, **from 
 cd src && docker compose up -d
 ```
 
-That brings up DynamoDB Local on `:8000`, creates the `Payments` table, and starts the
+That brings up DynamoDB Local on `:8000`, creates the `PendingPayments` and `CompletedPayments`
+tables, and starts the
 WireMock acquiring-bank simulator on `:8080`. Add `--profile api` to also build and run the
 API container on `:5067` (don't combine it with `dotnet run`, they share the port).
 
@@ -72,12 +73,12 @@ A `POST /api/payment` flows through one chain, each link behind an interface:
 `PaymentController` assigns a new `PaymentId` GUID, runs all five
 `IPaymentRequestValidator` checks (`Services/PaymentRequestValidator.cs`), then hands off to
 `IBankService` (`Services/BankService.cs`). `BankService` first persists the payment as
-`Pending` via `IPaymentsRepository.Add` (`Services/PaymentsRepository.cs`; a failure there throws,
+`Pending` to `PendingPayments` via `IPaymentsRepository.Add` (`Services/PaymentsRepository.cs`; a failure there throws,
 so the bank is never called), then calls `IBankHttpClient` (`Services/BankHttpClient.cs`, POSTs to
 `payments` under `SimulatorBankBaseAddress`), passes a successful response to
 `IBankResponseProcessor` (`Services/BankResponseProcessor.cs`) to map it onto a
-`PostPaymentResponse`, and overwrites the record with the final status via
-`IPaymentsRepository.Update` (which logs rather than throws) before returning it.
+`PostPaymentResponse`, and moves the record, with its final status, to `CompletedPayments` via
+`IPaymentsRepository.Complete` (which logs rather than throws) before returning it.
 
 `PaymentStatus` (`Models/PaymentStatus.cs`) is the contract between layers:
 
@@ -95,9 +96,17 @@ them separate — collapsing them couples our public API to the bank's.
 
 ### Persistence
 
-DynamoDB table `Payments`, hash key `PaymentId`. Each item is just `PaymentId` (S) plus
-`PaymentRaw` (S) holding the JSON-serialized `PostPaymentResponse` (including the bank's
-`AuthorizationCode`). Only the last four card digits are ever stored.
+Two DynamoDB tables, `PendingPayments` and `CompletedPayments`, both with hash key `PaymentId`
+and the same item shape: just `PaymentId` (S) plus `PaymentRaw` (S) holding the JSON-serialized
+`PostPaymentResponse` (including the bank's `AuthorizationCode`). Only the last four card digits
+are ever stored.
+
+`Add` writes to `PendingPayments`. `Complete` moves the payment in one `TransactWriteItems`
+(put into `CompletedPayments`, delete from `PendingPayments`), so it is never in both or neither.
+A row left in `PendingPayments` means the bank outcome was never recorded (in flight, or
+`Complete` failed and only the error log holds the `PaymentRaw`): that table is the
+reconciliation worklist. `Get` reads `CompletedPayments` first, then falls back to
+`PendingPayments`.
 
 ### Wiring
 
