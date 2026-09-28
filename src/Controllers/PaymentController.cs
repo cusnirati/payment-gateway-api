@@ -58,8 +58,8 @@ public class PaymentController : ControllerBase
     {
         // not idempotent for simplicity
         payment.PaymentId = Guid.NewGuid().ToString();
-        this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
+        this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
         bool isValid =
             this.validator.IsCardNumberValid(payment) &&
             this.validator.IsExpiryValid(payment, DateTime.Now) &&

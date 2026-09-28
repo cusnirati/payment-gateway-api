@@ -13,9 +13,9 @@ namespace PaymentGatewayApi.Services;
 
 public interface IPaymentsRepository
 {
+    Task<PostPaymentResponse?> Get(string paymentId);
     Task Add(PostPaymentResponse payment);
     Task Update(PostPaymentResponse payment);
-    Task<PostPaymentResponse?> Get(string paymentId);
 }
 
 public class PaymentsRepository : IPaymentsRepository
@@ -27,6 +27,35 @@ public class PaymentsRepository : IPaymentsRepository
     {
         this.logger = logger;
         this.dynamo = dynamo;
+    }
+
+    public async Task<PostPaymentResponse?> Get(string paymentId)
+    {
+        var dynamoKey = new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = paymentId }
+        };
+
+        PostPaymentResponse? payment = null;
+        try
+        {
+            GetItemRequest request = new() { Key = dynamoKey, TableName = "Payments" };
+
+            GetItemResponse response = await this.dynamo.GetItemAsync(request);
+            if (response.Item != null && response.Item.Any())
+            {
+                string raw = response.Item["PaymentRaw"].S;
+                payment = JsonSerializer.Deserialize<PostPaymentResponse>(raw);
+            }
+        }
+        catch (Exception exception)
+        {
+            // throw so ErrorMiddleware.cs answers http 500: returning null would report an unreadable payment as not found
+            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Failed");
+            throw;
+        }
+
+        return payment;
     }
 
     public async Task Add(PostPaymentResponse payment)
@@ -70,34 +99,5 @@ public class PaymentsRepository : IPaymentsRepository
                 "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentRaw={PaymentRaw}",
                 payment.PaymentId, "UpdatePayment", "Failed", item["PaymentRaw"].S);
         }
-    }
-
-    public async Task<PostPaymentResponse?> Get(string paymentId)
-    {
-        var dynamoKey = new Dictionary<string, AttributeValue>
-        {
-            ["PaymentId"] = new AttributeValue { S = paymentId }
-        };
-
-        PostPaymentResponse? payment = null;
-        try
-        {
-            GetItemRequest request = new() { Key = dynamoKey, TableName = "Payments" };
-
-            GetItemResponse response = await this.dynamo.GetItemAsync(request);
-            if (response.Item != null && response.Item.Any())
-            {
-                string raw = response.Item["PaymentRaw"].S;
-                payment = JsonSerializer.Deserialize<PostPaymentResponse>(raw);
-            }
-        }
-        catch (Exception exception)
-        {
-            // throw so ErrorMiddleware answers 500: returning null would report an unreadable payment as not found
-            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Failed");
-            throw;
-        }
-
-        return payment;
     }
 }
