@@ -31,7 +31,11 @@ public class PaymentsRepository : IPaymentsRepository
 
     public async Task Add(PostPaymentResponse payment)
     {
-        Dictionary<string, AttributeValue> item = ToItem(payment);
+        var item = new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
+            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
+        };
 
         try
         {
@@ -47,7 +51,11 @@ public class PaymentsRepository : IPaymentsRepository
 
     public async Task Update(PostPaymentResponse payment)
     {
-        Dictionary<string, AttributeValue> item = ToItem(payment);
+        Dictionary<string, AttributeValue> item = new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
+            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
+        };
 
         try
         {
@@ -55,8 +63,8 @@ public class PaymentsRepository : IPaymentsRepository
         }
         catch (Exception exception)
         {
-            // the bank has already answered, so failing the request here would hide an authorized payment
-            // from the merchant; log the raw item instead so it can be reconciled
+            // the bank has already answered, so throwing back 500 here would hide an authorized payment
+            // we would have an alert in monitoring for this scenario, should never happen
             this.logger.LogError(
                 exception,
                 "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentRaw={PaymentRaw}",
@@ -66,53 +74,30 @@ public class PaymentsRepository : IPaymentsRepository
 
     public async Task<PostPaymentResponse?> Get(string paymentId)
     {
-        var key = new Dictionary<string, AttributeValue>
+        var dynamoKey = new Dictionary<string, AttributeValue>
         {
             ["PaymentId"] = new AttributeValue { S = paymentId }
         };
 
-        GetItemRequest request = new() { Key = key, TableName = "Payments" };
-
-        PostPaymentResponse? payment;
+        PostPaymentResponse? payment = null;
         try
         {
-            GetItemResponse response = await this.dynamo.GetItemAsync(request);
+            GetItemRequest request = new() { Key = dynamoKey, TableName = "Payments" };
 
+            GetItemResponse response = await this.dynamo.GetItemAsync(request);
             if (response.Item != null && response.Item.Any())
             {
                 string raw = response.Item["PaymentRaw"].S;
                 payment = JsonSerializer.Deserialize<PostPaymentResponse>(raw);
             }
-            else
-            {
-                payment = null;
-            }
         }
         catch (Exception exception)
         {
-            // rethrow so ErrorMiddleware answers 500: returning null would report an unreadable payment as not found
+            // throw so ErrorMiddleware answers 500: returning null would report an unreadable payment as not found
             this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Failed");
             throw;
         }
 
-        if (payment is not null)
-        {
-            return payment;
-        }
-        else
-        {
-            this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "NotFound");
-
-            return null;
-        }
-    }
-
-    private static Dictionary<string, AttributeValue> ToItem(PostPaymentResponse payment)
-    {
-        return new Dictionary<string, AttributeValue>
-        {
-            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
-        };
+        return payment;
     }
 }

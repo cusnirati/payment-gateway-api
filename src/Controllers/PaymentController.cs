@@ -74,7 +74,7 @@ public class PaymentController : ControllerBase
 
         // good place to split into a separate service if validation would include fraud detection, sanction screening, etc
 
-        // a declined payment was still processed by the bank, so it is answered like an authorized one
+        // todo sync consistent merchant responses
         var paymentResponse = await this.bankService.ExecutePayment(payment);
         if (paymentResponse.Status == PaymentStatus.Authorized || paymentResponse.Status == PaymentStatus.Declined)
         {

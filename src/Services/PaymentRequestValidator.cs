@@ -38,32 +38,6 @@ public class PaymentRequestValidator : IPaymentRequestValidator
             return false;
         }
 
-        // Luhn check: from the rightmost digit, double every second digit (subtracting 9 when it exceeds 9),
-        // the total must be a multiple of 10
-        int sum = 0;
-        for (int i = 0; i < payment.CardNumber.Length; i++)
-        {
-            int digit = payment.CardNumber[payment.CardNumber.Length - 1 - i] - '0';
-            if (i % 2 == 1)
-            {
-                digit *= 2;
-                if (digit > 9)
-                {
-                    digit -= 9;
-                }
-            }
-
-            sum += digit;
-        }
-
-        if (sum % 10 != 0)
-        {
-            this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsCardNumberValid", "LuhnCheck", false);
-            return false;
-        }
-
         return true;
     }
 
