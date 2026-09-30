@@ -29,6 +29,12 @@ public class ErrorMiddleware
                 "Operation={Operation}, Status={Status}",
                 "UnhandledException", "Failed");
 
+            // headers are already sent, so the status can't change: rethrow to let the server abort the response
+            if (context.Response.HasStarted)
+            {
+                throw;
+            }
+
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
             // or replace message with correlationId
