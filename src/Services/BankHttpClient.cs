@@ -39,7 +39,8 @@ public class BankHttpClient : IBankHttpClient
             ExpiryDate = expiry,
             Currency = payment.Currency,
             Amount = payment.Amount,
-            Cvv = payment.Cvv
+            Cvv = payment.Cvv,
+            PaymentId = payment.PaymentId 
         };
 
         HttpResponseMessage response;
@@ -54,6 +55,7 @@ public class BankHttpClient : IBankHttpClient
         catch (Exception exception)
         {
             this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostBankPayment", "Failed");
+            
             return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
         }
 

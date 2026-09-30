@@ -56,7 +56,7 @@ public class PaymentController : ControllerBase
     [HttpPost()]
     public async Task<ActionResult<PostPaymentResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
-        // not idempotent for simplicity
+        // not idempotent for simplicity. Otherwise a unique merchant payment reference would be passed as param
         payment.PaymentId = Guid.NewGuid().ToString();
 
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
