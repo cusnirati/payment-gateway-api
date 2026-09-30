@@ -57,8 +57,8 @@ public class PaymentController : ControllerBase
     [HttpPost()]
     public async Task<ActionResult<PostPaymentResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
-        // not idempotent for simplicity
-        payment.PaymentId = Guid.NewGuid().ToString();
+        // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference as PaymentId
+        payment.PaymentId ??= Guid.NewGuid().ToString();
 
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
         bool isValid =
