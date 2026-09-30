@@ -60,6 +60,8 @@ An assembly fixture (`ApiFixture`) polls the healthcheck for 30s before failing.
 defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to run against
 `dotnet run` instead of the container). No resilience handler is configured on the bank
 `HttpClient` (it is commented out in `Program.cs`), so the simulator's `503` is not retried.
+The bank `HttpClient` has an explicit 10s timeout; a timeout is caught in `BankHttpClient` like
+any other transport failure and surfaces as `InternalError`.
 String results (`"ok"`, rejected/error
 status names) come back as `text/plain`, not JSON strings.
 
@@ -147,9 +149,13 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   the method name passed as an argument (never inlined in the template), with `Status` values like
   `"Started"` / `"Completed"` / `"Failed"`. `CallerId` and `CorrelationId` are enriched
   automatically by `LogMiddleware` from the request headers (a missing `CorrelationId`
-  header gets a generated GUID), so never pass them by hand.
+  header gets a generated GUID), so never pass them by hand. The resolved `CorrelationId` is
+  echoed back in a `CorrelationId` response header.
 - **Serilog is configured from `src/logconfig.json`, not `appsettings.json`.**
   `appsettings.json` holds `SimulatorBankBaseAddress`, `SupportedCurrencies` (the only
   currencies `IsCurrencyCodeValid` accepts, matched case-insensitively) and the `AWS` block (pointed at
   `http://localhost:8000` for DynamoDB Local). Verbose file logs go to `src/z-logs/`
   (gitignored); the console sink is deliberately terse.
+  In a container (`DOTNET_RUNNING_IN_CONTAINER=true`, set by the .NET base images)
+  `logconfig.container.json` is loaded instead: `CompactJsonFormatter` to stdout only, no files.
+  Keep its `MinimumLevel` in step with `logconfig.json`.

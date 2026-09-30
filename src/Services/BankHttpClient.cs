@@ -3,11 +3,10 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using PaymentGatewayApi.Models;
-using Microsoft.Extensions.Logging;
-using Serilog;
-using Microsoft.Extensions.Configuration;
 using Amazon.Extensions.NETCore.Setup;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 
