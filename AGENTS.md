@@ -25,8 +25,9 @@ dotnet run --project src/PaymentGatewayApi.csproj    # http://localhost:5067, Sw
 docker build -t payment-gateway-api src/             # container image
 ```
 
-`dotnet run` sets the working directory to `src/`, which is what makes `logconfig.json` and
-the `z-logs/` output path resolve.
+`logconfig.json` is added to `builder.Configuration`, so it resolves against the content root
+(`src/` under `dotnet run`). The `z-logs/` output path is still relative to the working
+directory, which `dotnet run` sets to `src/`.
 
 ### Tests
 
