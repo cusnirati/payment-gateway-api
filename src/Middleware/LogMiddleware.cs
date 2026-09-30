@@ -32,7 +32,7 @@ public class LogMiddleware
         // set before the pipeline runs, headers are read-only once the response has started
         context.Response.Headers["CorrelationId"] = correlationId;
 
-        using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"]))
+        using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"].FirstOrDefault()))
         using (LogContext.PushProperty("CorrelationId", correlationId))
         {
             await next(context);
