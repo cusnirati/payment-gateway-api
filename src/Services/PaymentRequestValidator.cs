@@ -44,7 +44,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsExpiryValid(PaymentRequest payment, DateTime nowDt)
     {
-        string expiryStr = $"{payment.ExpiryMonth}/{payment.ExpiryYear}";
+        string expiryStr = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}";
         if (!DateTime.TryParseExact(expiryStr, "MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime expiryDt))
         {
             this.logger.LogWarning(
@@ -57,7 +57,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         DateOnly expiry = new(expiryDt.Year, expiryDt.Month, 1);
         DateOnly now = new(nowDt.Year, nowDt.Month, 1);
 
-        if (expiry > now)
+        if (expiry < now)
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
