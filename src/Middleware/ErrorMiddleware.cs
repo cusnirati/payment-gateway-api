@@ -32,9 +32,7 @@ public class ErrorMiddleware
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
             // or replace message with correlationId
-            await context.Response.WriteAsync($"InternalServerError");
-
-            return;
+            await context.Response.WriteAsync("InternalServerError");
         }
     }
 }
