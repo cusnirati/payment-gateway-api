@@ -30,7 +30,7 @@ public class PaymentRequestValidator : IPaymentRequestValidator
 
     public bool IsCardNumberValid(PaymentRequest payment)
     {
-        // [0-9] rather than \d, which also matches non-ASCII digits and would break the Luhn arithmetic below
+        // [0-9] rather than \d, which also matches non-ASCII digits
         if (!Regex.IsMatch(payment.CardNumber, @"^[0-9]{14,19}$"))
         {
             this.logger.LogInformation(
