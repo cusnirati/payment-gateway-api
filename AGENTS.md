@@ -154,3 +154,6 @@ shadows the specific stubs; WireMock breaks equal-priority ties by load order.
   currencies `IsCurrencyCodeValid` accepts, matched case-insensitively) and the `AWS` block (pointed at
   `http://localhost:8000` for DynamoDB Local). Verbose file logs go to `src/z-logs/`
   (gitignored); the console sink is deliberately terse.
+  In a container (`DOTNET_RUNNING_IN_CONTAINER=true`, set by the .NET base images)
+  `logconfig.container.json` is loaded instead: `CompactJsonFormatter` to stdout only, no files.
+  Keep its `MinimumLevel` in step with `logconfig.json`.

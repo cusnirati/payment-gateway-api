@@ -8,17 +8,21 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Serilog.Formatting.Compact;
 
-// bootstrap logger covers startup, until AddSerilog replaces it with the logconfig.json pipeline
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .CreateBootstrapLogger();
+// set by the official .NET base images; in a container, logs go to stdout as JSON instead of rolling files inside the image
+var runningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+
+// bootstrap logger covers startup, until AddSerilog replaces it with the logconfig pipeline
+Log.Logger = runningInContainer
+    ? new LoggerConfiguration().WriteTo.Console(new CompactJsonFormatter()).CreateBootstrapLogger()
+    : new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
 
 try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Configuration.AddJsonFile("logconfig.json");
+    builder.Configuration.AddJsonFile(runningInContainer ? "logconfig.container.json" : "logconfig.json");
     builder.Services.AddSerilog((sp, lc) => lc
         .ReadFrom.Configuration(sp.GetRequiredService<IConfiguration>())
         .ReadFrom.Services(sp));
