@@ -22,4 +22,5 @@ public class BankRequest
     public required string Currency { get; set; }
     public long Amount { get; set; }
     public required string Cvv { get; set; }
+    public string? PaymentId { get; set; }
 }
