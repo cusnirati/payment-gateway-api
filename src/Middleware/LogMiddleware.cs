@@ -29,6 +29,9 @@ public class LogMiddleware
             correlationId = Guid.NewGuid().ToString();
         }
 
+        // set before the pipeline runs, headers are read-only once the response has started
+        context.Response.Headers["CorrelationId"] = correlationId;
+
         using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"]))
         using (LogContext.PushProperty("CorrelationId", correlationId))
         {
