@@ -70,7 +70,8 @@ written above each action in `Controllers/PaymentController.cs`.
 
 A `POST /api/payment` flows through one chain, each link behind an interface:
 
-`PaymentController` assigns a new `PaymentId` GUID, runs all five
+`PaymentController` keeps a client-supplied `PaymentId` as-is (unvalidated; `GET` only
+matches GUIDs) or assigns a new GUID when it is missing, runs all five
 `IPaymentRequestValidator` checks (`Services/PaymentRequestValidator.cs`), then hands off to
 `IBankService` (`Services/BankService.cs`). `BankService` first persists the payment as
 `Pending` to `PendingPayments` via `IPaymentsRepository.Add` (`Services/PaymentsRepository.cs`; a failure there throws,
