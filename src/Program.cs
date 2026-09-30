@@ -11,9 +11,8 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var config = new ConfigurationBuilder().AddJsonFile("logconfig.json").Build();
-var log = new LoggerConfiguration().ReadFrom.Configuration(config).CreateLogger();
-builder.Host.UseSerilog(log);
+builder.Configuration.AddJsonFile("logconfig.json");
+builder.Services.AddSerilog((sp, lc) => lc.ReadFrom.Configuration(sp.GetRequiredService<IConfiguration>()));
 
 builder.Services.AddControllers();
 
