@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace PaymentGatewayApi.Models;
 
+[JsonConverter(typeof(JsonStringEnumConverter<PaymentStatus>))]
 public enum PaymentStatus
 {
     Authorized, // payment was authorized by the acquiring bank
