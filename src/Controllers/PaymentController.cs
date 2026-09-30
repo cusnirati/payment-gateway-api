@@ -39,12 +39,13 @@ public class PaymentController : ControllerBase
         return new OkObjectResult("ok");
     }
 
-    [HttpGet("{paymentId}")]
-    public async Task<ActionResult<PostPaymentResponse>> GetPayment(string paymentId)
+    [HttpGet("{paymentId:guid}")]
+    public async Task<ActionResult<PostPaymentResponse>> GetPayment(Guid paymentId)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Started");
 
-        var payment = await this.paymentRepo.Get(paymentId);
+        // ToString() gives the canonical lowercase "D" format, the same one PostPayment stores under
+        var payment = await this.paymentRepo.Get(paymentId.ToString());
         if (payment is null)
         {
             return new NotFoundObjectResult("payment not found");
