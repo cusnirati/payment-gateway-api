@@ -97,8 +97,10 @@ them separate — collapsing them couples our public API to the bank's.
 ### Persistence
 
 Two DynamoDB tables, `PendingPayments` and `CompletedPayments`, both with hash key `PaymentId`
-and the same item shape: just `PaymentId` (S) plus `PaymentRaw` (S) holding the JSON-serialized
-`PostPaymentResponse` (including the bank's `AuthorizationCode`). Only the last four card digits
+and the same item shape: just `PaymentId` (S), `PaymentRaw` (S) holding the JSON-serialized
+`PostPaymentResponse` (including the bank's `AuthorizationCode`), and `CreatedAt` (S), the ISO 8601
+UTC time the item was written to that table. `CreatedAt` is set by the repository, not the table
+definition: DynamoDB only declares key attributes, so compose can't define it. Only the last four card digits
 are ever stored.
 
 `Add` writes to `PendingPayments`. `Complete` moves the payment in one `TransactWriteItems`

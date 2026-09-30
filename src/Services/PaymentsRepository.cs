@@ -70,7 +70,8 @@ public class PaymentsRepository : IPaymentsRepository
         var item = new Dictionary<string, AttributeValue>
         {
             ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
+            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
+            ["CreatedAt"] = new AttributeValue { S = DateTime.UtcNow.ToString("o") }
         };
 
         try
@@ -90,7 +91,8 @@ public class PaymentsRepository : IPaymentsRepository
         Dictionary<string, AttributeValue> item = new Dictionary<string, AttributeValue>
         {
             ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) }
+            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
+            ["CreatedAt"] = new AttributeValue { S = DateTime.UtcNow.ToString("o") }
         };
 
         // move the payment in one transaction, so it is never in both tables or in neither
