@@ -30,7 +30,7 @@ try
     builder.Services.AddControllers();
 
     // using simple httpClient for dev purpose, ideally should be a separate, fine tuned library for retries, circuit breaker
-    builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>();
+    builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
     var awsOptions = builder.Configuration.GetAWSOptions();
     awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);

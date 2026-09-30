@@ -60,6 +60,8 @@ An assembly fixture (`ApiFixture`) polls the healthcheck for 30s before failing.
 defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to run against
 `dotnet run` instead of the container). No resilience handler is configured on the bank
 `HttpClient` (it is commented out in `Program.cs`), so the simulator's `503` is not retried.
+The bank `HttpClient` has an explicit 10s timeout; a timeout is caught in `BankHttpClient` like
+any other transport failure and surfaces as `InternalError`.
 String results (`"ok"`, rejected/error
 status names) come back as `text/plain`, not JSON strings.
 
