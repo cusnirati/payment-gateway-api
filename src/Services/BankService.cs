@@ -1,9 +1,7 @@
 using System.Net.Http;
 using System.Threading.Tasks;
-using PaymentGatewayApi.Models;
-using PaymentGatewayApi.Services;
 using Microsoft.Extensions.Logging;
-using Serilog;
+using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 
