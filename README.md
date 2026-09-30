@@ -7,5 +7,3 @@ Intentional kept simple so that can demo software building principles like SOLID
 Certain things are omitted (verbosity in logs, authorization, https, http retries, configuration file validation, etc).
 
 More verbose than console ones logs are in directory `z-logs`.
-
-add later how to run / debug
