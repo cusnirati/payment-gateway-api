@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using PaymentGatewayApi.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace PaymentGatewayApi.Services;
 
@@ -41,22 +42,22 @@ public class PaymentRequestValidator : IPaymentRequestValidator
         return true;
     }
 
-    public bool IsExpiryValid(PaymentRequest payment, DateTime now)
+    public bool IsExpiryValid(PaymentRequest payment, DateTime nowDt)
     {
-        // most probably not needed, date should be already valid
-        if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
+        string expiryStr = $"{payment.ExpiryMonth}/{payment.ExpiryYear}";
+        if (!DateTime.TryParseExact(expiryStr, "MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime expiryDt))
         {
-            this.logger.LogInformation(
+            this.logger.LogWarning(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsExpiryMonthValid", false);
+                payment.PaymentId, "Validator.IsExpiryDateFormatValid", false);
 
             return false;
         }
 
-        // compared as numbers, not as a DateTime, so an out of range year is rejected instead of throwing;
-        // the bank expects a four digit year
-        bool isExpired = payment.ExpiryYear < now.Year || (payment.ExpiryYear == now.Year && payment.ExpiryMonth < now.Month);
-        if (isExpired || payment.ExpiryYear > 9999)
+        DateOnly expiry = new(expiryDt.Year, expiryDt.Month, 1);
+        DateOnly now = new(nowDt.Year, nowDt.Month, 1);
+
+        if (expiry > now)
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
