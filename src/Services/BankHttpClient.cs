@@ -45,6 +45,7 @@ public class BankHttpClient : IBankHttpClient
         HttpResponseMessage response;
         try
         {
+            // move to Program.cs
             string bankUrl = this.config["SimulatorBankBaseAddress"] ?? throw new ConfigurationException("SimulatorBankBaseAddress");
             this.httpClient.BaseAddress = new Uri(bankUrl);
 
