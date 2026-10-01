@@ -40,7 +40,7 @@ public class PaymentController : ControllerBase
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Started");
 
         // ToString() gives the canonical lowercase "D" format, the same one PostPayment stores under
-        var payment = await this.paymentRepo.Get(paymentId.ToString());
+        PostPaymentResponse? payment = await this.paymentRepo.Get(paymentId.ToString());
         if (payment is null)
         {
             return new NotFoundObjectResult("payment not found");
@@ -71,7 +71,7 @@ public class PaymentController : ControllerBase
         // good place to split into a separate service if validation would include fraud detection, sanction screening, etc
 
         // todo sync consistent merchant responses
-        var paymentResponse = await this.bankService.ExecutePayment(payment);
+        PostPaymentResponse paymentResponse = await this.bankService.ExecutePayment(payment);
         if (paymentResponse.Status == PaymentStatus.Authorized || paymentResponse.Status == PaymentStatus.Declined)
         {
             return new OkObjectResult(paymentResponse);
