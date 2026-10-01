@@ -1,5 +1,7 @@
 using System;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
@@ -84,4 +86,14 @@ public class MerchantResponse
 {
     public string? PaymentId { get; set; }
     public PaymentStatus Status { get; set; }
+    public ValidationMessage ValidMessage {get; set;}
 }
+
+// also see rfc 9457
+[JsonConverter(typeof(JsonStringEnumConverter<ValidationMessage>))]
+public enum ValidationMessage
+{
+    InvalidCardNumber,
+    InvalidExpiry
+}
+
