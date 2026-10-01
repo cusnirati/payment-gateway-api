@@ -1,7 +1,7 @@
-*.swp
-
 bin/
 obj/
 .vscode/
 
+*.swp
 src/z-logs/*.log
+z-trash.md
