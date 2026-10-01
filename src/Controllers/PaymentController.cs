@@ -86,14 +86,14 @@ public class MerchantResponse
 {
     public string? PaymentId { get; set; }
     public PaymentStatus Status { get; set; }
-    public ValidationMessage ValidMessage {get; set;}
+
+    public ValidationMessage ValidationMessage { get; set; }
 }
 
-// also see rfc 9457
+// or RFC 9457. https://www.rfc-editor.org/info/rfc9457/
 [JsonConverter(typeof(JsonStringEnumConverter<ValidationMessage>))]
 public enum ValidationMessage
 {
     InvalidCardNumber,
     InvalidExpiry
 }
-
