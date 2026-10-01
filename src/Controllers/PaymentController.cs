@@ -69,7 +69,8 @@ public class PaymentController : ControllerBase
 
         if (!isValid)
         {
-            return new BadRequestObjectResult(PaymentStatus.Rejected.ToString());
+            // todo add validation message
+            return new OkObjectResult(new MerchantResponse { Status = PaymentStatus.Rejected });
         }
 
         PostPaymentResponse paymentResponse = await this.bankService.ExecutePayment(payment);
