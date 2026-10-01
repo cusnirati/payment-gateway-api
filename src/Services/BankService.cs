@@ -30,7 +30,6 @@ public class BankService : IBankService
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "ExecuteBankPayment", "Started");
 
-        // record the payment before the bank is called, a failure here throws and the bank is never called
         PostPaymentResponse pending = new PostPaymentResponse
         {
             PaymentId = payment.PaymentId,

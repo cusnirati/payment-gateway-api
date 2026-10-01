@@ -38,21 +38,25 @@ public class PaymentController : ControllerBase
     public async Task<ActionResult<PostPaymentResponse>> GetPayment(Guid paymentId)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Started");
+        MerchantResponse response = new();
 
-        // ToString() gives the canonical lowercase "D" format, the same one PostPayment stores under
-        PostPaymentResponse? payment = await this.paymentRepo.Get(paymentId.ToString());
+        var payment = await this.paymentRepo.Get(paymentId.ToString());
         if (payment is null)
         {
-            return new NotFoundObjectResult("payment not found");
+            response.Status = PaymentStatus.NotFound;
+            return new OkObjectResult(response);
         }
 
-        return new OkObjectResult(payment);
+        response.PaymentId = payment.PaymentId;
+        response.Status = payment.Status;
+
+        return new OkObjectResult(response);
     }
 
     [HttpPost()]
-    public async Task<ActionResult<PostPaymentResponse>> PostPayment([FromBody] PaymentRequest payment)
+    public async Task<ActionResult<MerchantResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
-        // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference as PaymentId
+        // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference
         payment.PaymentId ??= Guid.NewGuid().ToString();
 
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
@@ -68,15 +72,15 @@ public class PaymentController : ControllerBase
             return new BadRequestObjectResult(PaymentStatus.Rejected.ToString());
         }
 
-        // good place to split into a separate service if validation would include fraud detection, sanction screening, etc
-
-        // todo sync consistent merchant responses
         PostPaymentResponse paymentResponse = await this.bankService.ExecutePayment(payment);
-        if (paymentResponse.Status == PaymentStatus.Authorized || paymentResponse.Status == PaymentStatus.Declined)
-        {
-            return new OkObjectResult(paymentResponse);
-        }
 
-        return new BadRequestObjectResult(paymentResponse.Status.ToString());
+        var response = new MerchantResponse { PaymentId = paymentResponse.PaymentId, Status = paymentResponse.Status };
+        return new OkObjectResult(response);
     }
+}
+
+public class MerchantResponse
+{
+    public string? PaymentId { get; set; }
+    public PaymentStatus Status { get; set; }
 }

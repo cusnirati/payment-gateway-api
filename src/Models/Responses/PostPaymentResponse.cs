@@ -2,7 +2,7 @@ namespace PaymentGatewayApi.Models;
 
 public class PostPaymentResponse
 {
-    public string? PaymentId { get; set; }
+    public required string PaymentId { get; set; }
     public PaymentStatus Status { get; set; }
     public string? CardNumberLastFour { get; set; }
     public int ExpiryMonth { get; set; }
