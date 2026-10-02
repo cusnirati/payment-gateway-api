@@ -15,7 +15,14 @@ public interface ICardDetailsValidator
 
 public class CardDetailsValidator : ICardDetailsValidator
 {
+    // 14 to 19 ASCII digits
+    private readonly Regex cardNumberRegex = new(@"^[0-9]{14,19}$", RegexOptions.Compiled);
+
+    // 3 or 4 ASCII digits
+    private readonly Regex cvvRegex = new(@"^[0-9]{3,4}$", RegexOptions.Compiled);
+
     private readonly ILogger<CardDetailsValidator> logger;
+
 
     public CardDetailsValidator(ILogger<CardDetailsValidator> logger)
     {
@@ -24,8 +31,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
     public ValidationError? IsCardNumberValid(PaymentRequest payment)
     {
-        // [0-9] rather than \d, which also matches non-ASCII digits
-        if (!Regex.IsMatch(payment.CardNumber, @"^[0-9]{14,19}$"))
+        if (!this.cardNumberRegex.IsMatch(payment.CardNumber))
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
@@ -65,8 +71,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
     public ValidationError? IsCvvValid(PaymentRequest payment)
     {
-        // 3 or 4 digits
-        if (!Regex.IsMatch(payment.Cvv, @"^[0-9]{3,4}$"))
+        if (!this.cvvRegex.IsMatch(payment.Cvv))
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
