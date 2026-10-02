@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PaymentGatewayApi.Middleware;
 using PaymentGatewayApi.Services;
+using PaymentGatewayApi.Services.Validators;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -25,7 +26,11 @@ try
         .ReadFrom.Configuration(sp.GetRequiredService<IConfiguration>())
         .ReadFrom.Services(sp));
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers().AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
 
     // using simple httpClient for dev purpose, ideally should be a separate, fine tuned library for retries, circuit breaker
     builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
@@ -37,7 +42,9 @@ try
 
     builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
 
-    builder.Services.AddScoped<IPaymentRequestValidator, PaymentRequestValidator>();
+    builder.Services.AddScoped<IValidationOrchestrator, ValidationOrchestrator>();
+    builder.Services.AddScoped<ICardDetailsValidator, CardDetailsValidator>();
+    builder.Services.AddScoped<IPaymentDetailsValidator, PaymentDetailsValidator>();
     builder.Services.AddScoped<IBankResponseProcessor, BankResponseProcessor>();
     builder.Services.AddScoped<IBankService, BankService>();
 

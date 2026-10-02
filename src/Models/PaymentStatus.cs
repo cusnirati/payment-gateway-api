@@ -9,6 +9,6 @@ public enum PaymentStatus
     Declined, // payment was declined by the acquiring bank
     Rejected, //  payment could not be completed as invalid information was supplied to the payment gateway
     InternalError, // payment could not be completed due to an internal error. Should never happen
-    Pending, // payment
+    Pending, // payment is valid, but was authorized by the acquiring bank yet
     NotFound
 }

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Forms;
@@ -6,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Services;
+using PaymentGatewayApi.Services.Validators;
 
 namespace PaymentGatewayApi.Controllers;
 
@@ -15,11 +18,11 @@ public class PaymentController : ControllerBase
 {
     private readonly ILogger<PaymentController> logger;
     private readonly IPaymentsRepository paymentRepo;
-    private readonly IPaymentRequestValidator validator;
+    private readonly IValidationOrchestrator validator;
     private readonly IBankService bankService;
 
     public PaymentController(
-        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IPaymentRequestValidator validator, IBankService bankService)
+        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IValidationOrchestrator validator, IBankService bankService)
     {
         this.logger = logger;
         this.paymentRepo = paymentRepo;
@@ -45,12 +48,12 @@ public class PaymentController : ControllerBase
         var payment = await this.paymentRepo.Get(paymentId.ToString());
         if (payment is null)
         {
-            response.Status = PaymentStatus.NotFound;
+            response.PaymentStatus = PaymentStatus.NotFound;
             return new OkObjectResult(response);
         }
 
         response.PaymentId = payment.PaymentId;
-        response.Status = payment.Status;
+        response.PaymentStatus = payment.Status;
 
         return new OkObjectResult(response);
     }
@@ -62,38 +65,17 @@ public class PaymentController : ControllerBase
         payment.PaymentId ??= Guid.NewGuid().ToString();
 
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
-        bool isValid =
-            this.validator.IsCardNumberValid(payment) &&
-            this.validator.IsExpiryValid(payment, DateTime.Now) &&
-            this.validator.IsAmountValid(payment) &&
-            this.validator.IsCurrencyCodeValid(payment) &&
-            this.validator.IsCvvValid(payment);
 
-        if (!isValid)
+        var validationErrors = this.validator.ValidatePayment(payment);
+        if (validationErrors.Any())
         {
-            // todo add validation message
-            return new OkObjectResult(new MerchantResponse { Status = PaymentStatus.Rejected });
+            return new OkObjectResult(new MerchantResponse { PaymentStatus = PaymentStatus.Rejected, ValidationErrors = validationErrors });
         }
 
         PostPaymentResponse paymentResponse = await this.bankService.ExecutePayment(payment);
+        MerchantResponse response = new() { PaymentId = paymentResponse.PaymentId, PaymentStatus = paymentResponse.Status };
 
-        var response = new MerchantResponse { PaymentId = paymentResponse.PaymentId, Status = paymentResponse.Status };
         return new OkObjectResult(response);
     }
 }
 
-public class MerchantResponse
-{
-    public string? PaymentId { get; set; }
-    public PaymentStatus Status { get; set; }
-
-    public ValidationMessage ValidationMessage { get; set; }
-}
-
-// or RFC 9457. https://www.rfc-editor.org/info/rfc9457/
-[JsonConverter(typeof(JsonStringEnumConverter<ValidationMessage>))]
-public enum ValidationMessage
-{
-    InvalidCardNumber,
-    InvalidExpiry
-}
