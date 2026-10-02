@@ -66,7 +66,7 @@ public class CardDetailsValidator : ICardDetailsValidator
     public ValidationError? IsCvvValid(PaymentRequest payment)
     {
         // 3 or 4 digits
-        if (!Regex.IsMatch(payment.Cvv, @"^\d{3,4}$"))
+        if (!Regex.IsMatch(payment.Cvv, @"^[0-9]{3,4}$"))
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
