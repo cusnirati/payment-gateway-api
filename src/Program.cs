@@ -46,7 +46,7 @@ try
     builder.Services.AddScoped<ICardDetailsValidator, CardDetailsValidator>();
     builder.Services.AddScoped<IPaymentDetailsValidator, PaymentDetailsValidator>();
     builder.Services.AddScoped<IBankResponseProcessor, BankResponseProcessor>();
-    builder.Services.AddScoped<IBankService, BankService>();
+    builder.Services.AddScoped<IPaymentProcessor, PaymentProcessor>();
 
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();

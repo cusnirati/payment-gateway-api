@@ -5,20 +5,20 @@ using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 
-public interface IBankService
+public interface IPaymentProcessor
 {
     Task<PostPaymentResponse> ExecutePayment(PaymentRequest payment);
 }
 
-public class BankService : IBankService
+public class PaymentProcessor : IPaymentProcessor
 {
-    private readonly ILogger<BankService> logger;
+    private readonly ILogger<PaymentProcessor> logger;
     private readonly IBankHttpClient bankHttpClient;
     private readonly IBankResponseProcessor responseProcessor;
     private readonly IPaymentsRepository paymentRepo;
 
-    public BankService(
-        ILogger<BankService> logger, IBankHttpClient bankHttpClient, IBankResponseProcessor responseProcessor, IPaymentsRepository paymentRepo)
+    public PaymentProcessor(
+        ILogger<PaymentProcessor> logger, IBankHttpClient bankHttpClient, IBankResponseProcessor responseProcessor, IPaymentsRepository paymentRepo)
     {
         this.logger = logger;
         this.bankHttpClient = bankHttpClient;

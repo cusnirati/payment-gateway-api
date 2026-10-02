@@ -19,15 +19,15 @@ public class PaymentController : ControllerBase
     private readonly ILogger<PaymentController> logger;
     private readonly IPaymentsRepository paymentRepo;
     private readonly IValidationOrchestrator validator;
-    private readonly IBankService bankService;
+    private readonly IPaymentProcessor paymentProcessor;
 
     public PaymentController(
-        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IValidationOrchestrator validator, IBankService bankService)
+        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IValidationOrchestrator validator, IPaymentProcessor paymentProcessor)
     {
         this.logger = logger;
         this.paymentRepo = paymentRepo;
         this.validator = validator;
-        this.bankService = bankService;
+        this.paymentProcessor = paymentProcessor;
     }
 
     // curl -k http://localhost:5067/api/payment
@@ -68,7 +68,7 @@ public class PaymentController : ControllerBase
             return new OkObjectResult(new MerchantResponse { PaymentStatus = PaymentStatus.Rejected, ValidationErrors = validationErrors });
         }
 
-        PostPaymentResponse paymentResponse = await this.bankService.ExecutePayment(payment);
+        PostPaymentResponse paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
         MerchantResponse response = new() { PaymentId = paymentResponse.PaymentId, PaymentStatus = paymentResponse.Status };
 
         return new OkObjectResult(response);
