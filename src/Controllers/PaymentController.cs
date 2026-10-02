@@ -43,18 +43,14 @@ public class PaymentController : ControllerBase
     public async Task<ActionResult<PostPaymentResponse>> GetPayment(Guid paymentId)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Started");
-        MerchantResponse response = new();
 
         var payment = await this.paymentRepo.Get(paymentId.ToString());
         if (payment is null)
         {
-            response.PaymentStatus = PaymentStatus.NotFound;
-            return new OkObjectResult(response);
+            return new OkObjectResult(new MerchantResponse { PaymentId = paymentId.ToString(), PaymentStatus = PaymentStatus.NotFound });
         }
 
-        response.PaymentId = payment.PaymentId;
-        response.PaymentStatus = payment.Status;
-
+        MerchantResponse response = new() { PaymentId = payment.PaymentId, PaymentStatus = payment.Status };
         return new OkObjectResult(response);
     }
 
