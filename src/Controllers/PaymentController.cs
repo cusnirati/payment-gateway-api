@@ -47,7 +47,7 @@ public class PaymentController : ControllerBase
         var payment = await this.paymentRepo.Get(paymentId.ToString());
         if (payment is null)
         {
-            return new OkObjectResult(new MerchantResponse { PaymentId = paymentId.ToString(), PaymentStatus = PaymentStatus.NotFound });
+            return new NotFoundObjectResult(new MerchantResponse { PaymentId = paymentId.ToString() });
         }
 
         MerchantResponse response = new() { PaymentId = payment.PaymentId, PaymentStatus = payment.Status };
@@ -65,7 +65,7 @@ public class PaymentController : ControllerBase
         var validationErrors = this.validator.ValidatePayment(payment);
         if (validationErrors.Any())
         {
-            return new OkObjectResult(new MerchantResponse { PaymentStatus = PaymentStatus.Rejected, ValidationErrors = validationErrors });
+            return new BadRequestObjectResult(new MerchantResponse { PaymentStatus = PaymentStatus.Rejected, ValidationErrors = validationErrors });
         }
 
         PostPaymentResponse paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
