@@ -65,7 +65,7 @@ public class PaymentController : ControllerBase
 
         MerchantResponse response = new() { PaymentId = payment.PaymentId };
 
-        var validationErrors = this.validator.ValidatePayment(payment);
+        List<ValidationError> validationErrors = this.validator.ValidatePayment(payment);
         if (validationErrors.Any())
         {
             response.PaymentStatus = PaymentStatus.Rejected;

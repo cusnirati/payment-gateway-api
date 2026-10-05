@@ -18,8 +18,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 {
     // 14 to 19 ASCII digits
     private readonly Regex cardNumberRegex = new(@"^[0-9]{14,19}$", RegexOptions.Compiled);
-
-    // 3 or 4 ASCII digits
+    // 3 to 4 ASCII digits
     private readonly Regex cvvRegex = new(@"^[0-9]{3,4}$", RegexOptions.Compiled);
 
     private readonly ILogger<CardDetailsValidator> logger;
@@ -39,6 +38,7 @@ public class CardDetailsValidator : ICardDetailsValidator
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsCardNumberValid", false);
+
             return new ValidationError
             {
                 ErrorCode = ValidationErrorCode.InvalidCardNumber,

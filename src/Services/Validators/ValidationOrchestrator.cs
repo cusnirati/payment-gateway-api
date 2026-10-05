@@ -13,7 +13,7 @@ namespace PaymentGatewayApi.Services.Validators;
 
 public interface IValidationOrchestrator
 {
-    List<ValidationError?> ValidatePayment(PaymentRequest payment);
+    List<ValidationError> ValidatePayment(PaymentRequest payment);
 }
 
 public class ValidationOrchestrator : IValidationOrchestrator
@@ -28,7 +28,7 @@ public class ValidationOrchestrator : IValidationOrchestrator
     }
 
     // leaving as is for simplicity, otherwise use something like https://github.com/FluentValidation/FluentValidation
-    public List<ValidationError?> ValidatePayment(PaymentRequest payment)
+    public List<ValidationError> ValidatePayment(PaymentRequest payment)
     {
         var validationErrors = new List<ValidationError?>();
 
@@ -39,8 +39,7 @@ public class ValidationOrchestrator : IValidationOrchestrator
         validationErrors.Add(this.paymentValidator.ValidateAmount(payment));
         validationErrors.Add(this.paymentValidator.ValidateCurrencyCode(payment));
 
-        validationErrors.RemoveAll(x => x == null);
-
-        return validationErrors;
+        // drops nulls and ensures it is non-nullable
+        return validationErrors.OfType<ValidationError>().ToList();
     }
 }
