@@ -31,7 +31,11 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsAmountValid", false);
 
-            return ValidationError.InvalidAmount;
+            return new ValidationError
+            {
+                ErrorCode = ValidationErrorCode.InvalidAmount,
+                ErrorMessage = "Amount must be a whole number of minor currency units, at least 1."
+            };
         }
 
         return null;
@@ -46,7 +50,11 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsCurrencyCodeValid", false);
 
-            return ValidationError.InvalidCurrencyCode;
+            return new ValidationError
+            {
+                ErrorCode = ValidationErrorCode.InvalidCurrencyCode,
+                ErrorMessage = $"Currency '{payment.Currency}' is not supported. Supported currencies: {string.Join(", ", supportedCurrencies)}."
+            };
         }
 
         return null;
