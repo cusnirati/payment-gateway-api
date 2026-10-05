@@ -27,7 +27,7 @@ public class ValidationOrchestrator : IValidationOrchestrator
         this.paymentValidator = paymentValidator;
     }
 
-    // or switch to using a library like https://github.com/FluentValidation/FluentValidation
+    // leaving as is for simplicity, otherwise use something like https://github.com/FluentValidation/FluentValidation
     public List<ValidationError?> ValidatePayment(PaymentRequest payment)
     {
         var validationErrors = new List<ValidationError?>();
