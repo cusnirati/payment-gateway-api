@@ -56,8 +56,6 @@ try
     app.UseSwaggerUI();
 
     app.UseMiddleware<LogMiddleware>();
-    // after LogMiddleware so the completion event carries CallerId/CorrelationId, before ErrorMiddleware so it sees the final 500
-    app.UseSerilogRequestLogging();
     app.UseMiddleware<ErrorMiddleware>();
 
     app.MapControllers();
@@ -71,12 +69,3 @@ finally
 {
     Log.CloseAndFlush();
 }
-
-// https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0#header-propagation-middleware
-// https://github.com/dotnet/aspnetcore/issues/48581
-// .AddPollyRetries(log);
-// app.UseHeaderPropagation();
-// builder.Services.ConfigureHttpClientDefaults(http =>
-// {
-//     http.AddStandardResilienceHandler();
-// });

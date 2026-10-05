@@ -40,7 +40,7 @@ public class PaymentController : ControllerBase
     }
 
     [HttpGet("{paymentId:guid}")]
-    public async Task<ActionResult<PostPaymentResponse>> GetPayment(Guid paymentId)
+    public async Task<ActionResult<MerchantResponse>> GetPayment(Guid paymentId)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Started");
 
