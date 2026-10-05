@@ -20,9 +20,9 @@ public class ValidationOrchestrator : IValidationOrchestrator
     private readonly ICardDetailsValidator cardValidator;
     private readonly IPaymentDetailsValidator paymentValidator;
 
-    public ValidationOrchestrator(ICardDetailsValidator cardVlidator, IPaymentDetailsValidator paymentValidator)
+    public ValidationOrchestrator(ICardDetailsValidator cardValidator, IPaymentDetailsValidator paymentValidator)
     {
-        this.cardValidator = cardVlidator;
+        this.cardValidator = cardValidator;
         this.paymentValidator = paymentValidator;
     }
 
