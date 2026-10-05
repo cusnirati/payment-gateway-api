@@ -59,7 +59,6 @@ public class PaymentController : ControllerBase
     {
         // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference
         payment.PaymentId = Guid.NewGuid().ToString();
-
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
         var validationErrors = this.validator.ValidatePayment(payment);
