@@ -39,7 +39,11 @@ public class CardDetailsValidator : ICardDetailsValidator
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsCardNumberValid", false);
-            return ValidationError.InvalidCardNumber;
+            return new ValidationError
+            {
+                ErrorCode = ValidationErrorCode.InvalidCardNumber,
+                ErrorMessage = "Card number must be a string of 14 to 19 ASCII digits."
+            };
         }
 
         return null;
@@ -54,7 +58,11 @@ public class CardDetailsValidator : ICardDetailsValidator
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsExpiryDateFormatValid", false);
 
-            return ValidationError.InvalidDateFormatExpiry;
+            return new ValidationError
+            {
+                ErrorCode = ValidationErrorCode.InvalidDateFormatExpiry,
+                ErrorMessage = $"Expiry date '{expiryStr}' is not valid. Expiry month must be 1 to 12 and expiry year a four-digit year."
+            };
         }
 
         DateOnly expiry = new(expiryDt.Year, expiryDt.Month, 1);
@@ -67,7 +75,11 @@ public class CardDetailsValidator : ICardDetailsValidator
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsExpiryValid", false);
 
-            return ValidationError.CardExpired;
+            return new ValidationError
+            {
+                ErrorCode = ValidationErrorCode.CardExpired,
+                ErrorMessage = $"Card expired. Expiry date '{expiryStr}' is before the current month."
+            };
         }
 
         return null;
@@ -81,7 +93,11 @@ public class CardDetailsValidator : ICardDetailsValidator
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsCvvValid", false);
 
-            return ValidationError.InvalidCvv;
+            return new ValidationError
+            {
+                ErrorCode = ValidationErrorCode.InvalidCvv,
+                ErrorMessage = "CVV must be a string of 3 or 4 ASCII digits."
+            };
         }
 
         return null;
