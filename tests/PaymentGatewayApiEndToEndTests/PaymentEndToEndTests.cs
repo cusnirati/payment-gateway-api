@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Models.Requests;
+using PaymentGatewayApi.Models.Responses;
 using Xunit;
 
 namespace PaymentGatewayApiEndToEndTests;

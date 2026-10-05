@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace PaymentGatewayApi.Models;
+namespace PaymentGatewayApi.Models.Requests;
 
 // example json payload
 // {

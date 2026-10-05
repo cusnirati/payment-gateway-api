@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Models.Requests;
 
 namespace PaymentGatewayApi.Services.Validators;
 

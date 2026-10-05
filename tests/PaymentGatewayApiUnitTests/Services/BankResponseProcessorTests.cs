@@ -4,6 +4,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Models.Requests;
+using PaymentGatewayApi.Models.Responses;
 using PaymentGatewayApi.Services;
 using Xunit;
 
