@@ -7,8 +7,8 @@ namespace PaymentGatewayApi.Services.Validators;
 
 public interface IPaymentDetailsValidator
 {
-    ValidationError? IsAmountValid(PaymentRequest payment);
-    ValidationError? IsCurrencyCodeValid(PaymentRequest payment);
+    ValidationError? ValidateAmount(PaymentRequest payment);
+    ValidationError? ValidateCurrencyCode(PaymentRequest payment);
 }
 
 public class PaymentDetailsValidator : IPaymentDetailsValidator
@@ -22,7 +22,7 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
         this.config = config;
     }
 
-    public ValidationError? IsAmountValid(PaymentRequest payment)
+    public ValidationError? ValidateAmount(PaymentRequest payment)
     {
         if (payment.Amount < 1)
         {
@@ -36,7 +36,7 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
         return null;
     }
 
-    public ValidationError? IsCurrencyCodeValid(PaymentRequest payment)
+    public ValidationError? ValidateCurrencyCode(PaymentRequest payment)
     {
         string[] supportedCurrencies = this.config.GetSection("SupportedCurrencies").Get<string[]>() ?? [];
         if (!supportedCurrencies.Contains(payment.Currency, StringComparer.OrdinalIgnoreCase))

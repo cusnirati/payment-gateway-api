@@ -26,17 +26,17 @@ public class ValidationOrchestrator : IValidationOrchestrator
         this.paymentValidator = paymentValidator;
     }
 
-    // 
+    // or switch to using a library like https://github.com/FluentValidation/FluentValidation
     public List<ValidationError?> ValidatePayment(PaymentRequest payment)
     {
         var validationErrors = new List<ValidationError?>();
 
-        validationErrors.Add(this.cardValidator.IsCardNumberValid(payment));
-        validationErrors.Add(this.cardValidator.IsExpiryValid(payment, DateTime.UtcNow));
-        validationErrors.Add(this.cardValidator.IsCvvValid(payment));
+        validationErrors.Add(this.cardValidator.ValidateCardNumber(payment));
+        validationErrors.Add(this.cardValidator.ValidateCardExpiry(payment, DateTime.UtcNow));
+        validationErrors.Add(this.cardValidator.ValidateCardCvv(payment));
 
-        validationErrors.Add(this.paymentValidator.IsAmountValid(payment));
-        validationErrors.Add(this.paymentValidator.IsCurrencyCodeValid(payment));
+        validationErrors.Add(this.paymentValidator.ValidateAmount(payment));
+        validationErrors.Add(this.paymentValidator.ValidateCurrencyCode(payment));
 
         validationErrors.RemoveAll(x => x == null);
 

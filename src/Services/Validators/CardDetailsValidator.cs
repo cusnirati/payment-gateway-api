@@ -8,9 +8,9 @@ namespace PaymentGatewayApi.Services.Validators;
 
 public interface ICardDetailsValidator
 {
-    ValidationError? IsCardNumberValid(PaymentRequest payment);
-    ValidationError? IsExpiryValid(PaymentRequest payment, DateTime now);
-    ValidationError? IsCvvValid(PaymentRequest payment);
+    ValidationError? ValidateCardNumber(PaymentRequest payment);
+    ValidationError? ValidateCardExpiry(PaymentRequest payment, DateTime now);
+    ValidationError? ValidateCardCvv(PaymentRequest payment);
 }
 
 public class CardDetailsValidator : ICardDetailsValidator
@@ -23,13 +23,12 @@ public class CardDetailsValidator : ICardDetailsValidator
 
     private readonly ILogger<CardDetailsValidator> logger;
 
-
     public CardDetailsValidator(ILogger<CardDetailsValidator> logger)
     {
         this.logger = logger;
     }
 
-    public ValidationError? IsCardNumberValid(PaymentRequest payment)
+    public ValidationError? ValidateCardNumber(PaymentRequest payment)
     {
         if (!this.cardNumberRegex.IsMatch(payment.CardNumber))
         {
@@ -42,7 +41,7 @@ public class CardDetailsValidator : ICardDetailsValidator
         return null;
     }
 
-    public ValidationError? IsExpiryValid(PaymentRequest payment, DateTime nowDt)
+    public ValidationError? ValidateCardExpiry(PaymentRequest payment, DateTime nowDt)
     {
         string expiryStr = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}";
         if (!DateTime.TryParseExact(expiryStr, "MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime expiryDt))
@@ -69,7 +68,7 @@ public class CardDetailsValidator : ICardDetailsValidator
         return null;
     }
 
-    public ValidationError? IsCvvValid(PaymentRequest payment)
+    public ValidationError? ValidateCardCvv(PaymentRequest payment)
     {
         if (!this.cvvRegex.IsMatch(payment.Cvv))
         {
