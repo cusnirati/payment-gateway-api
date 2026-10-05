@@ -9,7 +9,7 @@ namespace PaymentGatewayApi.Services.Validators;
 public interface ICardDetailsValidator
 {
     ValidationError? ValidateCardNumber(PaymentRequest payment);
-    ValidationError? ValidateCardExpiry(PaymentRequest payment, DateTime now);
+    ValidationError? ValidateCardExpiry(PaymentRequest payment);
     ValidationError? ValidateCardCvv(PaymentRequest payment);
 }
 
@@ -22,10 +22,12 @@ public class CardDetailsValidator : ICardDetailsValidator
     private readonly Regex cvvRegex = new(@"^[0-9]{3,4}$", RegexOptions.Compiled);
 
     private readonly ILogger<CardDetailsValidator> logger;
+    private readonly TimeProvider timeProvider;
 
-    public CardDetailsValidator(ILogger<CardDetailsValidator> logger)
+    public CardDetailsValidator(ILogger<CardDetailsValidator> logger, TimeProvider timeProvider)
     {
         this.logger = logger;
+        this.timeProvider = timeProvider;
     }
 
     public ValidationError? ValidateCardNumber(PaymentRequest payment)
@@ -41,7 +43,7 @@ public class CardDetailsValidator : ICardDetailsValidator
         return null;
     }
 
-    public ValidationError? ValidateCardExpiry(PaymentRequest payment, DateTime nowDt)
+    public ValidationError? ValidateCardExpiry(PaymentRequest payment)
     {
         string expiryStr = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}";
         if (!DateTime.TryParseExact(expiryStr, "MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime expiryDt))
@@ -54,6 +56,7 @@ public class CardDetailsValidator : ICardDetailsValidator
         }
 
         DateOnly expiry = new(expiryDt.Year, expiryDt.Month, 1);
+        DateTimeOffset nowDt = this.timeProvider.GetUtcNow();
         DateOnly now = new(nowDt.Year, nowDt.Month, 1);
 
         if (expiry < now)

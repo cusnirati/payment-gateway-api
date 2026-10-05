@@ -40,6 +40,7 @@ try
     builder.Services.AddDefaultAWSOptions(awsOptions);
     builder.Services.AddAWSService<IAmazonDynamoDB>();
 
+    builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
 
     builder.Services.AddScoped<IValidationOrchestrator, ValidationOrchestrator>();

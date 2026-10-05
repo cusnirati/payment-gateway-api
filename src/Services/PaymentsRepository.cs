@@ -21,11 +21,13 @@ public class PaymentsRepository : IPaymentsRepository
 {
     private readonly ILogger<PaymentsRepository> logger;
     private readonly IAmazonDynamoDB dynamo;
+    private readonly TimeProvider timeProvider;
 
-    public PaymentsRepository(ILogger<PaymentsRepository> logger, IAmazonDynamoDB dynamo)
+    public PaymentsRepository(ILogger<PaymentsRepository> logger, IAmazonDynamoDB dynamo, TimeProvider timeProvider)
     {
         this.logger = logger;
         this.dynamo = dynamo;
+        this.timeProvider = timeProvider;
     }
 
     public async Task<PostPaymentResponse?> Get(string paymentId)
@@ -70,7 +72,7 @@ public class PaymentsRepository : IPaymentsRepository
         {
             ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
-            ["CreatedAt"] = new AttributeValue { S = DateTime.UtcNow.ToString("o") }
+            ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
         };
 
         try
@@ -91,7 +93,7 @@ public class PaymentsRepository : IPaymentsRepository
         {
             ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
             ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
-            ["CreatedAt"] = new AttributeValue { S = DateTime.UtcNow.ToString("o") }
+            ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
         };
 
         // move the payment in one transaction, so it is never in both tables or in neither
