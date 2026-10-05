@@ -35,7 +35,7 @@ public class LogMiddleware
         using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"].FirstOrDefault()))
         using (LogContext.PushProperty("CorrelationId", correlationId))
         {
-            await next(context);
+            await this.next(context);
         }
     }
 }
