@@ -25,17 +25,17 @@ public class LogMiddleware
         }
         else 
         {
-            // or return bad request if missing correlationId
             correlationId = Guid.NewGuid().ToString();
         }
 
         // set before the pipeline runs, headers are read-only once the response has started
         context.Response.Headers["CorrelationId"] = correlationId;
 
+        // this is not a customer facing service in the DMZ so we skip some security checks like header validation and sanitization
         using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"].FirstOrDefault()))
         using (LogContext.PushProperty("CorrelationId", correlationId))
         {
-            await next(context);
+            await this.next(context);
         }
     }
 }

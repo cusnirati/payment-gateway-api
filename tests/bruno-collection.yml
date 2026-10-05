@@ -38,7 +38,7 @@ items:
       method: GET
       url: http://localhost:5067/api/payment
       headers:
-        - name: Callerid
+        - name: CallerId
           value: bruno-client
       auth: inherit
     settings:

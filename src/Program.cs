@@ -32,7 +32,7 @@ try
             System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 
-    // using simple httpClient for dev purpose, ideally should be a separate, fine tuned library with retries, circuit breaker
+    // using simple httpClient for dev purposes, ideally should be a separate, fine-tuned library with retries, circuit breaker
     builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
     var awsOptions = builder.Configuration.GetAWSOptions();

@@ -17,6 +17,7 @@ public interface IPaymentsRepository
     Task Complete(PostPaymentResponse payment);
 }
 
+// PaymentRaw should be versioned for compatibility
 public class PaymentsRepository : IPaymentsRepository
 {
     private readonly ILogger<PaymentsRepository> logger;

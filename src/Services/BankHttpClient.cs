@@ -49,7 +49,7 @@ public class BankHttpClient : IBankHttpClient
             string bankUrl = this.config["SimulatorBankBaseAddress"] ?? throw new ConfigurationException("SimulatorBankBaseAddress");
             this.httpClient.BaseAddress = new Uri(bankUrl);
 
-            // we assume the bank call is idempotent - provding the same PaymentId
+            // we assume the bank call is idempotent - providing the same PaymentId
             response = await this.httpClient.PostAsJsonAsync("payments", request);
         }
         catch (Exception exception)

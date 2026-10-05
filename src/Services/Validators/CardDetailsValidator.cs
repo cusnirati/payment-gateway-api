@@ -49,7 +49,7 @@ public class CardDetailsValidator : ICardDetailsValidator
         string expiryStr = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}";
         if (!DateTime.TryParseExact(expiryStr, "MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime expiryDt))
         {
-            this.logger.LogWarning(
+            this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
                 payment.PaymentId, "Validator.IsExpiryDateFormatValid", false);
 
