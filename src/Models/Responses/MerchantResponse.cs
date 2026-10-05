@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace PaymentGatewayApi.Models;
+namespace PaymentGatewayApi.Models.Responses;
 
 public class MerchantResponse
 {

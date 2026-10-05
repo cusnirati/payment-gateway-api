@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Models.Requests;
+using PaymentGatewayApi.Models.Responses;
 using PaymentGatewayApi.Services;
 using PaymentGatewayApi.Services.Validators;
 

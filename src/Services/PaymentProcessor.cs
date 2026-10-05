@@ -2,6 +2,8 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Models.Requests;
+using PaymentGatewayApi.Models.Responses;
 
 namespace PaymentGatewayApi.Services;
 

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Amazon.Extensions.NETCore.Setup;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Models.Requests;
 
 namespace PaymentGatewayApi.Services;
 

@@ -1,5 +1,5 @@
 using System;
-using PaymentGatewayApi.Models;
+using PaymentGatewayApi.Models.Requests;
 
 namespace PaymentGatewayApiEndToEndTests;
 

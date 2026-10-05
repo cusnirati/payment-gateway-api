@@ -1,4 +1,4 @@
-namespace PaymentGatewayApi.Models;
+namespace PaymentGatewayApi.Models.Responses;
 
 public class PostPaymentResponse
 {
