@@ -30,6 +30,7 @@ public class CardDetailsValidator : ICardDetailsValidator
         this.timeProvider = timeProvider;
     }
 
+    // not doing a Luhn check for simplicity
     public ValidationError? ValidateCardNumber(PaymentRequest payment)
     {
         if (!this.cardNumberRegex.IsMatch(payment.CardNumber))
