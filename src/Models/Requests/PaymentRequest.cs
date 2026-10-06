@@ -14,11 +14,13 @@ public class PaymentRequest
 {
     public required string CardNumber { get; set; }
     public required string Cvv { get; set; }
-    public required string Currency { get; set; }
 
     public int ExpiryMonth { get; set; }
     public int ExpiryYear { get; set; }
 
+    // 100 for 1 GBP
     public long Amount { get; set; }
+    public required string Currency { get; set; }
+
     public string? PaymentId { get; set; }
 }

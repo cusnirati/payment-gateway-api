@@ -37,16 +37,18 @@ public class PaymentsRepository : IPaymentsRepository
 
     public async Task<PaymentDb?> Get(string paymentId)
     {
-        // completed first, it is where almost every payment ends up
-        // no payment should be in PendingPayments table for a long time
+        // most probably a payment would be in CompletedPayments table
         try
         {
             var dynamoKey = new Dictionary<string, AttributeValue>
             {
                 ["PaymentId"] = new AttributeValue { S = paymentId }
             };
-
-            GetItemRequest request = new() { Key = dynamoKey, TableName = this.CompletedPaymentsTable };
+            var request = new GetItemRequest()
+            {
+                Key = dynamoKey,
+                TableName = this.CompletedPaymentsTable
+            };
 
             GetItemResponse response = await this.dynamo.GetItemAsync(request);
             if (response.Item == null || !response.Item.Any())
@@ -107,22 +109,22 @@ public class PaymentsRepository : IPaymentsRepository
     {
         try
         {
-            Dictionary<string, AttributeValue> completedPayment = new Dictionary<string, AttributeValue>
+            var item = new Dictionary<string, AttributeValue>
             {
                 ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
                 ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
                 ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
             };
 
-            TransactWriteItem addToCompleted = new()
+            var addToCompletedTransaction = new TransactWriteItem()
             {
                 Put = new Put
                 {
                     TableName = this.CompletedPaymentsTable,
-                    Item = completedPayment
+                    Item = item
                 }
             };
-            TransactWriteItem deleteFromPending = new()
+            var deleteFromPendingTransaction = new TransactWriteItem()
             {
                 Delete = new Delete
                 {
@@ -132,9 +134,9 @@ public class PaymentsRepository : IPaymentsRepository
             };
 
             // a payment can be only in 1 table
-            TransactWriteItemsRequest request = new()
+            var request = new TransactWriteItemsRequest()
             {
-                TransactItems = new List<TransactWriteItem> { addToCompleted, deleteFromPending }
+                TransactItems = new List<TransactWriteItem> { addToCompletedTransaction, deleteFromPendingTransaction }
             };
 
             await this.dynamo.TransactWriteItemsAsync(request);
