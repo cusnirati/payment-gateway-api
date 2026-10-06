@@ -77,20 +77,21 @@ public class PaymentsRepository : IPaymentsRepository
     {
         try
         {
-            var paymentDb = new PaymentDb
+            var payment = new PaymentDb
             {
-                PaymentId = paymentRequest.PaymentId,
                 CardNumberLastFour = paymentRequest.CardNumber.Substring(paymentRequest.CardNumber.Length - 4),
                 ExpiryMonth = paymentRequest.ExpiryMonth,
                 ExpiryYear = paymentRequest.ExpiryYear,
+                Amount = paymentRequest.Amount,
                 Currency = paymentRequest.Currency,
-                Amount = paymentRequest.Amount
+                PaymentId = paymentRequest.PaymentId,
+                Status = Models.PaymentStatus.Pending
             };
 
             var item = new Dictionary<string, AttributeValue>
             {
-                ["PaymentId"] = new AttributeValue { S = paymentRequest.PaymentId },
-                ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(paymentDb) },
+                ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
+                ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
                 ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
             };
 
@@ -98,7 +99,7 @@ public class PaymentsRepository : IPaymentsRepository
         }
         catch (Exception exception)
         {
-            // throw full exception so ErrorMiddleware answers 500
+            // throw exception so ErrorMiddleware answers 500
             // the bank must not be called for a payment we cannot store in the db + an alert would be set
             this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "AddPayment", "Failed");
             throw;
