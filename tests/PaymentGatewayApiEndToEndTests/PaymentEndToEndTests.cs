@@ -46,7 +46,7 @@ public class PaymentEndToEndTests
         string raw = await getResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.DoesNotContain(TestData.AuthorizedCard, raw);
 
-        PostPaymentResponse? stored = await getResponse.Content.ReadFromJsonAsync<PostPaymentResponse>(TestContext.Current.CancellationToken);
+        PaymentDb? stored = await getResponse.Content.ReadFromJsonAsync<PaymentDb>(TestContext.Current.CancellationToken);
         Assert.NotNull(stored);
         Assert.Equal(paymentId, stored.PaymentId);
         Assert.Equal(PaymentStatus.Authorized, stored.Status);

@@ -11,7 +11,7 @@ namespace PaymentGatewayApi.Services;
 
 public interface IBankResponseProcessor
 {
-    Task<PostPaymentResponse> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response);
+    Task<PaymentDb> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response);
 }
 
 public class BankResponseProcessor : IBankResponseProcessor
@@ -23,10 +23,10 @@ public class BankResponseProcessor : IBankResponseProcessor
         this.logger = logger;
     }
 
-    public async Task<PostPaymentResponse> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
+    public async Task<PaymentDb> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
     {
         BankResponse? bankResponse;
-        PostPaymentResponse payResponse = new();
+        PaymentDb payResponse = new();
 
         try
         {

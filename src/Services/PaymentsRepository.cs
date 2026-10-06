@@ -6,20 +6,24 @@ using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Logging;
+using PaymentGatewayApi.Models.Requests;
 using PaymentGatewayApi.Models.Responses;
 
 namespace PaymentGatewayApi.Services;
 
 public interface IPaymentsRepository
 {
-    Task<PostPaymentResponse?> Get(string paymentId);
-    Task Add(PostPaymentResponse payment);
-    Task Complete(PostPaymentResponse payment);
+    Task<PaymentDb?> Get(string paymentId);
+    Task AddPending(PaymentRequest payment);
+    Task Complete(PaymentDb payment);
 }
 
 // PaymentRaw should be versioned for compatibility
 public class PaymentsRepository : IPaymentsRepository
 {
+    private readonly string CompletedPaymentsTable = "CompletedPayments";
+    private readonly string PendingPaymentsTable = "PendingPayments";
+
     private readonly ILogger<PaymentsRepository> logger;
     private readonly IAmazonDynamoDB dynamo;
     private readonly TimeProvider timeProvider;
@@ -31,31 +35,33 @@ public class PaymentsRepository : IPaymentsRepository
         this.timeProvider = timeProvider;
     }
 
-    public async Task<PostPaymentResponse?> Get(string paymentId)
+    public async Task<PaymentDb?> Get(string paymentId)
     {
-        var dynamoKey = new Dictionary<string, AttributeValue>
-        {
-            ["PaymentId"] = new AttributeValue { S = paymentId }
-        };
-
-        PostPaymentResponse? payment = null;
+        // completed first, it is where almost every payment ends up
+        // no payment should be in PendingPayments table for a long time
         try
         {
-            // completed first, it is where almost every payment ends up; fall back to pending for in-flight ones
-            GetItemRequest request = new() { Key = dynamoKey, TableName = "CompletedPayments" };
+            var dynamoKey = new Dictionary<string, AttributeValue>
+            {
+                ["PaymentId"] = new AttributeValue { S = paymentId }
+            };
+
+            GetItemRequest request = new() { Key = dynamoKey, TableName = this.CompletedPaymentsTable };
 
             GetItemResponse response = await this.dynamo.GetItemAsync(request);
             if (response.Item == null || !response.Item.Any())
             {
-                request = new() { Key = dynamoKey, TableName = "PendingPayments" };
+                request = new() { Key = dynamoKey, TableName = this.PendingPaymentsTable };
                 response = await this.dynamo.GetItemAsync(request);
             }
 
+            PaymentDb? payment = null;
             if (response.Item != null && response.Item.Any())
             {
                 string raw = response.Item["PaymentRaw"].S;
-                payment = JsonSerializer.Deserialize<PostPaymentResponse>(raw);
+                payment = JsonSerializer.Deserialize<PaymentDb>(raw);
             }
+            return payment;
         }
         catch (Exception exception)
         {
@@ -63,59 +69,74 @@ public class PaymentsRepository : IPaymentsRepository
             this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Failed");
             throw;
         }
-
-        return payment;
     }
 
-    public async Task Add(PostPaymentResponse payment)
+    public async Task AddPending(PaymentRequest paymentRequest)
     {
-        var item = new Dictionary<string, AttributeValue>
-        {
-            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
-            ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
-        };
-
         try
         {
-            await this.dynamo.PutItemAsync("PendingPayments", item);
+            var paymentDb = new PaymentDb
+            {
+                PaymentId = paymentRequest.PaymentId,
+                CardNumberLastFour = paymentRequest.CardNumber.Substring(paymentRequest.CardNumber.Length - 4),
+                ExpiryMonth = paymentRequest.ExpiryMonth,
+                ExpiryYear = paymentRequest.ExpiryYear,
+                Currency = paymentRequest.Currency,
+                Amount = paymentRequest.Amount
+            };
+
+            var item = new Dictionary<string, AttributeValue>
+            {
+                ["PaymentId"] = new AttributeValue { S = paymentRequest.PaymentId },
+                ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(paymentDb) },
+                ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
+            };
+
+            await this.dynamo.PutItemAsync(this.PendingPaymentsTable, item);
         }
         catch (Exception exception)
         {
-            // rethrow so ErrorMiddleware answers 500: the bank must not be called for a payment we could not record
-            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "AddPayment", "Failed");
+            // throw full exception so ErrorMiddleware answers 500
+            // the bank must not be called for a payment we cannot store in the db + an alert would be set
+            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "AddPayment", "Failed");
             throw;
         }
     }
 
-    public async Task Complete(PostPaymentResponse payment)
+    public async Task Complete(PaymentDb payment)
     {
-        Dictionary<string, AttributeValue> item = new Dictionary<string, AttributeValue>
-        {
-            ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-            ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
-            ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
-        };
-
-        // move the payment in one transaction, so it is never in both tables or in neither
-        TransactWriteItemsRequest request = new()
-        {
-            TransactItems = new List<TransactWriteItem>
-            {
-                new() { Put = new Put { TableName = "CompletedPayments", Item = item } },
-                new()
-                {
-                    Delete = new Delete
-                    {
-                        TableName = "PendingPayments",
-                        Key = new Dictionary<string, AttributeValue> { ["PaymentId"] = new AttributeValue { S = payment.PaymentId } }
-                    }
-                }
-            }
-        };
-
         try
         {
+            Dictionary<string, AttributeValue> completedPayment = new Dictionary<string, AttributeValue>
+            {
+                ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
+                ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
+                ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
+            };
+
+            TransactWriteItem addToCompleted = new()
+            {
+                Put = new Put
+                {
+                    TableName = this.CompletedPaymentsTable,
+                    Item = completedPayment
+                }
+            };
+            TransactWriteItem deleteFromPending = new()
+            {
+                Delete = new Delete
+                {
+                    TableName = this.PendingPaymentsTable,
+                    Key = new Dictionary<string, AttributeValue> { ["PaymentId"] = new AttributeValue { S = payment.PaymentId } }
+                }
+            };
+
+            // a payment can be only in 1 table
+            TransactWriteItemsRequest request = new()
+            {
+                TransactItems = new List<TransactWriteItem> { addToCompleted, deleteFromPending }
+            };
+
             await this.dynamo.TransactWriteItemsAsync(request);
         }
         catch (Exception exception)
@@ -125,8 +146,8 @@ public class PaymentsRepository : IPaymentsRepository
             // we would have an alert in monitoring for this scenario, should never happen
             this.logger.LogError(
                 exception,
-                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentRaw={PaymentRaw}",
-                payment.PaymentId, "CompletePayment", "Failed", item["PaymentRaw"].S);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "CompletePayment", "Failed");
         }
     }
 }

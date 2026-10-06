@@ -1,6 +1,6 @@
 namespace PaymentGatewayApi.Models.Responses;
 
-public class PostPaymentResponse
+public class PaymentDb
 {
     public string? PaymentId { get; set; }
     public PaymentStatus Status { get; set; }

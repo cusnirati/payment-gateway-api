@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -9,7 +10,7 @@ namespace PaymentGatewayApi.Services;
 
 public interface IPaymentProcessor
 {
-    Task<PostPaymentResponse> ExecutePayment(PaymentRequest payment);
+    Task<PaymentDb> ExecutePayment(PaymentRequest payment);
 }
 
 public class PaymentProcessor : IPaymentProcessor
@@ -17,56 +18,48 @@ public class PaymentProcessor : IPaymentProcessor
     private readonly ILogger<PaymentProcessor> logger;
     private readonly IBankHttpClient bankHttpClient;
     private readonly IBankResponseProcessor responseProcessor;
-    private readonly IPaymentsRepository paymentRepo;
+    private readonly IPaymentsRepository paymentRepository;
 
     public PaymentProcessor(
-        ILogger<PaymentProcessor> logger, IBankHttpClient bankHttpClient, IBankResponseProcessor responseProcessor, IPaymentsRepository paymentRepo)
+        ILogger<PaymentProcessor> logger, IBankHttpClient bankHttpClient, IBankResponseProcessor responseProcessor, IPaymentsRepository paymentRepository)
     {
         this.logger = logger;
         this.bankHttpClient = bankHttpClient;
         this.responseProcessor = responseProcessor;
-        this.paymentRepo = paymentRepo;
+        this.paymentRepository = paymentRepository;
     }
 
-    public async Task<PostPaymentResponse> ExecutePayment(PaymentRequest payment)
+    public async Task<PaymentDb> ExecutePayment(PaymentRequest paymentRequest)
     {
-        this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "ExecuteBankPayment", "Started");
+        this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "ExecuteBankPayment", "Started");
+        await this.paymentRepository.AddPending(paymentRequest);
 
-        PostPaymentResponse pending = new PostPaymentResponse
-        {
-            PaymentId = payment.PaymentId,
-            Status = PaymentStatus.Pending,
-            CardNumberLastFour = payment.CardNumber.Substring(payment.CardNumber.Length - 4),
-            ExpiryMonth = payment.ExpiryMonth,
-            ExpiryYear = payment.ExpiryYear,
-            Currency = payment.Currency,
-            Amount = payment.Amount
-        };
-        await this.paymentRepo.Add(pending);
-
-        HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(payment);
+        HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(paymentRequest);
         if (bankResponse.IsSuccessStatusCode)
         {
-            PostPaymentResponse paymentResponse = await this.responseProcessor.ParseBankResponse(payment, bankResponse);
-            if (paymentResponse.Status == PaymentStatus.InternalError)
+            PaymentDb paymentDb = await this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);
+            if (paymentDb.Status == PaymentStatus.InternalError)
             {
                 // the processor returns only the status when the body is unusable, keep the pending details instead
-                pending.Status = PaymentStatus.InternalError;
-                paymentResponse = pending;
+                // pending.Status = PaymentStatus.InternalError;
+                // paymentResponse = pending;
             }
 
-            await this.paymentRepo.Complete(paymentResponse);
+            await this.paymentRepository.Complete(paymentDb);
 
-            return paymentResponse;
+            return paymentDb;
         }
-        else
-        {
-            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "ExecuteBankPayment", "Failed");
 
-            pending.Status = PaymentStatus.InternalError;
-            await this.paymentRepo.Complete(pending);
+        throw new Exception();
 
-            return pending;
-        }
+        // else
+        // {
+        //     this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "ExecuteBankPayment", "Failed");
+
+        //     pending.Status = PaymentStatus.InternalError;
+        //     await this.paymentRepository.Complete(pending);
+
+        //     return pending;
+        // }
     }
 }

@@ -74,7 +74,7 @@ public class PaymentController : ControllerBase
             return new BadRequestObjectResult(response);
         }
 
-        PostPaymentResponse paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
+        PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
         response.PaymentStatus = paymentResponse.Status;
 
         return new OkObjectResult(response);
