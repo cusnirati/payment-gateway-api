@@ -13,6 +13,6 @@
   "response": {
     "status": 200,
     "headers": { "Content-Type": "application/json" },
-    "jsonBody": { "authorized": false }
+    "jsonBody": { "authorized": false, "reason": "insufficient funds" }
   }
 }
