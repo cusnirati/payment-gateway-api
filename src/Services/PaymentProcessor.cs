@@ -34,7 +34,7 @@ public class PaymentProcessor : IPaymentProcessor
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "ExecuteBankPayment", "Started");
         await this.paymentRepository.AddPending(paymentRequest);
 
-        HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(paymentRequest);
+        using HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(paymentRequest);
         if (bankResponse.IsSuccessStatusCode)
         {
             PaymentDb paymentDb = await this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);

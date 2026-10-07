@@ -63,21 +63,21 @@ public class PaymentController : ControllerBase
         payment.PaymentId = Guid.NewGuid().ToString();
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
-        MerchantResponse response = new() { PaymentId = payment.PaymentId };
+        MerchantResponse merchantResponse = new() { PaymentId = payment.PaymentId };
 
         List<ValidationError> validationErrors = this.validator.ValidatePayment(payment);
         if (validationErrors.Any())
         {
-            response.PaymentStatus = PaymentStatus.Rejected;
-            response.ValidationErrors = validationErrors;
+            merchantResponse.PaymentStatus = PaymentStatus.Rejected;
+            merchantResponse.ValidationErrors = validationErrors;
 
-            return new BadRequestObjectResult(response);
+            return new BadRequestObjectResult(merchantResponse);
         }
 
         PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
-        response.PaymentStatus = paymentResponse.Status;
+        merchantResponse.PaymentStatus = paymentResponse.Status;
 
-        return new OkObjectResult(response);
+        return new OkObjectResult(merchantResponse);
     }
 }
 

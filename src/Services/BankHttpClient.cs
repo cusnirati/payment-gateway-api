@@ -4,9 +4,11 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Amazon.Extensions.NETCore.Setup;
+using Microsoft.AspNetCore.ResponseCaching;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models.Requests;
+using PaymentGatewayApi.Models.Responses;
 
 namespace PaymentGatewayApi.Services;
 
@@ -35,34 +37,38 @@ public class BankHttpClient : IBankHttpClient
         BankRequest request = new()
         {
             CardNumber = payment.CardNumber,
-            ExpiryDate = expiry,
-            Currency = payment.Currency,
-            Amount = payment.Amount,
             Cvv = payment.Cvv,
-            PaymentId = payment.PaymentId 
+            ExpiryDate = expiry,
+            Amount = payment.Amount,
+            Currency = payment.Currency,
+            PaymentId = payment.PaymentId
         };
 
-        HttpResponseMessage response;
+        HttpResponseMessage httpResponse;
         try
         {
-            // move to Program.cs
             string bankUrl = this.config["SimulatorBankBaseAddress"] ?? throw new ConfigurationException("SimulatorBankBaseAddress");
             this.httpClient.BaseAddress = new Uri(bankUrl);
 
             // we assume the bank call is idempotent - providing the same PaymentId
-            response = await this.httpClient.PostAsJsonAsync("payments", request);
+            httpResponse = await this.httpClient.PostAsJsonAsync("payments", request);
+            httpResponse.EnsureSuccessStatusCode();
+
+            BankResponse? bankResponse = await httpResponse.Content.ReadFromJsonAsync<BankResponse>();
         }
         catch (Exception exception)
         {
             this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostBankPayment", "Failed");
-            
-            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+
+            // return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
         }
 
-        this.logger.LogInformation(
-            "PaymentId={PaymentId}, Operation={Operation}, StatusCode={StatusCode}",
-            payment.PaymentId, "PostBankPayment", (int)response.StatusCode);
 
-        return response;
+
+        this.logger.LogInformation(
+            "PaymentId={PaymentId}, Operation={Operation}, HttpStatusCode={HttpStatusCode}",
+            payment.PaymentId, "PostBankPayment", (int)httpResponse.StatusCode);
+
+        return httpResponse;
     }
 }
