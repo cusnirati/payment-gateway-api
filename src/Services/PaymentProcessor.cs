@@ -34,32 +34,10 @@ public class PaymentProcessor : IPaymentProcessor
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "ExecuteBankPayment", "Started");
         await this.paymentRepository.AddPending(paymentRequest);
 
-        using HttpResponseMessage bankResponse = await this.bankHttpClient.PostBankPayment(paymentRequest);
-        if (bankResponse.IsSuccessStatusCode)
-        {
-            PaymentDb paymentDb = await this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);
-            if (paymentDb.Status == PaymentStatus.InternalError)
-            {
-                // the processor returns only the status when the body is unusable, keep the pending details instead
-                // pending.Status = PaymentStatus.InternalError;
-                // paymentResponse = pending;
-            }
-
-            await this.paymentRepository.Complete(paymentDb);
-
-            return paymentDb;
-        }
+        BankResponse? bankResponse = await this.bankHttpClient.PostPayment(paymentRequest);
+        PaymentDb paymentDb = await this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);
+        await this.paymentRepository.Complete(paymentDb);
 
         throw new Exception();
-
-        // else
-        // {
-        //     this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "ExecuteBankPayment", "Failed");
-
-        //     pending.Status = PaymentStatus.InternalError;
-        //     await this.paymentRepository.Complete(pending);
-
-        //     return pending;
-        // }
     }
 }

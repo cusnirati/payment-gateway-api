@@ -36,7 +36,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         {
             this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", request.PaymentId, "ParseBankResponse", "Exception", "Failed");
 
-            payResponse.Status = PaymentStatus.InternalError;
+            // payResponse.Status = PaymentStatus.InternalError;
             return payResponse;
         }
 
@@ -44,7 +44,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         {
             this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", request.PaymentId, "ParseBankResponse", "NullResponse", "Failed");
 
-            payResponse.Status = PaymentStatus.InternalError;
+            // payResponse.Status = PaymentStatus.InternalError;
             return payResponse;
         }
 
