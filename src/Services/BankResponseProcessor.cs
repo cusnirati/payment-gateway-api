@@ -11,7 +11,7 @@ namespace PaymentGatewayApi.Services;
 
 public interface IBankResponseProcessor
 {
-    Task<PaymentDb> ParseBankResponse(PaymentRequest payment, HttpResponseMessage response);
+    Task<PaymentDb> ParseBankResponse(PaymentRequest payment, BankResponse? response);
 }
 
 public class BankResponseProcessor : IBankResponseProcessor
@@ -23,45 +23,40 @@ public class BankResponseProcessor : IBankResponseProcessor
         this.logger = logger;
     }
 
-    public async Task<PaymentDb> ParseBankResponse(PaymentRequest request, HttpResponseMessage response)
+    public async Task<PaymentDb> ParseBankResponse(PaymentRequest paymentRequest, BankResponse? bankResponse)
     {
-        BankResponse? bankResponse;
-        PaymentDb payResponse = new();
-
-        try
-        {
-            bankResponse = await response.Content.ReadFromJsonAsync<BankResponse>();
-        }
-        catch (Exception exception)
-        {
-            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", request.PaymentId, "ParseBankResponse", "Exception", "Failed");
-
-            // payResponse.Status = PaymentStatus.InternalError;
-            return payResponse;
-        }
-
         if (bankResponse is null)
         {
-            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", request.PaymentId, "ParseBankResponse", "NullResponse", "Failed");
+            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", paymentRequest.PaymentId, "ParseBankResponse", "NullResponse", "Failed");
 
-            // payResponse.Status = PaymentStatus.InternalError;
-            return payResponse;
+            return new PaymentDb { Status = PaymentStatus.Pending };
         }
 
-        payResponse.Status = bankResponse.Authorized ? PaymentStatus.Authorized : PaymentStatus.Declined;
-        payResponse.CardNumberLastFour = request.CardNumber.Substring(request.CardNumber.Length - 4);
+        PaymentDb paymentDb = new PaymentDb();
+        paymentDb.PaymentId = paymentRequest.PaymentId;
 
-        payResponse.PaymentId = request.PaymentId;
-        payResponse.ExpiryMonth = request.ExpiryMonth;
-        payResponse.ExpiryYear = request.ExpiryYear;
-        payResponse.Currency = request.Currency;
-        payResponse.Amount = request.Amount;
-        payResponse.BankAuthorizationCode = bankResponse.AuthorizationCode;
+        paymentDb.CardNumberLastFour = paymentRequest.CardNumber.Substring(paymentRequest.CardNumber.Length - 4);
+        paymentDb.ExpiryMonth = paymentRequest.ExpiryMonth;
+        paymentDb.ExpiryYear = paymentRequest.ExpiryYear;
+
+        paymentDb.Amount = paymentRequest.Amount;
+        paymentDb.Currency = paymentRequest.Currency;
+
+        paymentDb.BankAuthorizationCode = bankResponse.AuthorizationCode;
+        if (bankResponse.Authorized && !string.IsNullOrWhiteSpace(bankResponse.AuthorizationCode))
+        {
+            paymentDb.Status = PaymentStatus.Authorized;
+        }
+        else
+        {
+            paymentDb.Status = PaymentStatus.Declined;
+            paymentDb.BankReason = bankResponse.Reason;
+        }
 
         this.logger.LogInformation(
             "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Authorized={Authorized}",
-            request.PaymentId, "ParseBankResponse", "Completed", bankResponse.Authorized);
+            paymentDb.PaymentId, "ParseBankResponse", "Completed", paymentDb.Status);
 
-        return payResponse;
+        return paymentDb;
     }
 }

@@ -14,8 +14,8 @@ namespace PaymentGatewayApi.Services;
 public interface IPaymentsRepository
 {
     Task<PaymentDb?> Get(string paymentId);
-    Task AddPending(PaymentRequest payment);
-    Task Complete(PaymentDb payment);
+    Task PutPending(PaymentRequest payment);
+    Task PutComplete(PaymentDb payment);
 }
 
 // PaymentRaw should be versioned for compatibility
@@ -73,7 +73,7 @@ public class PaymentsRepository : IPaymentsRepository
         }
     }
 
-    public async Task AddPending(PaymentRequest paymentRequest)
+    public async Task PutPending(PaymentRequest paymentRequest)
     {
         try
         {
@@ -106,7 +106,7 @@ public class PaymentsRepository : IPaymentsRepository
         }
     }
 
-    public async Task Complete(PaymentDb payment)
+    public async Task PutComplete(PaymentDb payment)
     {
         try
         {

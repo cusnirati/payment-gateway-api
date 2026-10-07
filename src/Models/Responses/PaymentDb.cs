@@ -13,4 +13,5 @@ public class PaymentDb
     public string? PaymentId { get; set; }
     public PaymentStatus Status { get; set; }
     public string? BankAuthorizationCode { get; set; }
+    public string? BankReason { get; set; }
 }

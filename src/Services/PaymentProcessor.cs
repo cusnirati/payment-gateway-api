@@ -32,12 +32,16 @@ public class PaymentProcessor : IPaymentProcessor
     public async Task<PaymentDb> ExecutePayment(PaymentRequest paymentRequest)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "ExecuteBankPayment", "Started");
-        await this.paymentRepository.AddPending(paymentRequest);
+        await this.paymentRepository.PutPending(paymentRequest);
 
         BankResponse? bankResponse = await this.bankHttpClient.PostPayment(paymentRequest);
         PaymentDb paymentDb = await this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);
-        await this.paymentRepository.Complete(paymentDb);
 
-        throw new Exception();
+        if (paymentDb.Status == PaymentStatus.Authorized)
+        {
+            await this.paymentRepository.PutComplete(paymentDb);
+        }
+
+        return paymentDb;
     }
 }
