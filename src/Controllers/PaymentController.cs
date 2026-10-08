@@ -62,6 +62,8 @@ public class PaymentController : ControllerBase
     {
         // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference
         payment.PaymentId = Guid.NewGuid().ToString();
+        // ISO 4217 codes are upper case; normalized here so the bank and the stored record never see "gbp"
+        payment.Currency = payment.Currency.ToUpperInvariant();
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
         MerchantResponse merchantResponse = new() { PaymentId = payment.PaymentId };
