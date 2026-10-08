@@ -9,11 +9,13 @@ public class ErrorMiddleware
 {
     private readonly RequestDelegate next;
     private readonly ILogger<ErrorMiddleware> logger;
+    private readonly IProblemDetailsService problemDetailsService;
 
-    public ErrorMiddleware(RequestDelegate next, ILogger<ErrorMiddleware> logger)
+    public ErrorMiddleware(RequestDelegate next, ILogger<ErrorMiddleware> logger, IProblemDetailsService problemDetailsService)
     {
         this.next = next;
         this.logger = logger;
+        this.problemDetailsService = problemDetailsService;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -37,8 +39,8 @@ public class ErrorMiddleware
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-            // or replace message with correlationId
-            await context.Response.WriteAsync("InternalServerError");
+            // RFC 9457 body like every other error; the exception stays in the logs, correlationId links the caller to them
+            await this.problemDetailsService.TryWriteAsync(new ProblemDetailsContext { HttpContext = context, Exception = exception });
         }
     }
 }

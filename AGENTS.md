@@ -64,8 +64,8 @@ defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to ru
 `HttpClient` (it is commented out in `Program.cs`), so the simulator's `503` is not retried.
 The bank `HttpClient` has an explicit 10s timeout; a timeout is caught in `BankHttpClient` like
 any other transport failure and surfaces as `InternalError`.
-String results (`"ok"`, rejected/error
-status names) come back as `text/plain`, not JSON strings.
+The healthcheck's `"ok"` comes back as `text/plain`, not a JSON string. Every error response is an
+RFC 9457 problem details body (`application/problem+json`), see Error handling below.
 
 For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health,
 get-by-id, authorized/declined/500 posts, and a direct simulator post), or the `curl` lines
@@ -124,7 +124,22 @@ a typed client registered through `AddHttpClient<IBankHttpClient, BankHttpClient
 `IAmazonDynamoDB` client registered through `AddAWSService<IAmazonDynamoDB>()`. New services follow the existing pattern — interface
 and implementation in the same file under `Services/` — and get registered there.
 
-Middleware order is `LogMiddleware` then `ErrorMiddleware`.
+Middleware order is `LogMiddleware`, `ErrorMiddleware`, then `UseStatusCodePages()`.
+
+### Error handling
+
+Every error is an RFC 9457 problem details body, built through `AddProblemDetails()` in `Program.cs`,
+whose `CustomizeProblemDetails` sets `instance` to the request path and adds a `correlationId` extension
+(the echoed header). Never hand-roll an error body; use one of these paths:
+
+- **Validation (400)** — validators return `ValidationError` (`Field`, `ErrorMessage`); the controller adds
+  them to `ModelState` and returns `ValidationProblem()`, the same `InvalidModelStateResponseFactory`
+  `[ApiController]` uses for a malformed body, so both give a `ValidationProblemDetails` with
+  `errors: { field: [messages] }`.
+- **Expected errors from an action** (e.g. payment not found, 404) — `this.Problem(statusCode, detail)`.
+- **Unhandled exceptions (500)** — `ErrorMiddleware` logs and writes through `IProblemDetailsService`;
+  exception details never reach the body.
+- **Bodiless status codes** (unmatched route, 405, 415) — `UseStatusCodePages()`.
 
 ## Bank simulator behaviour
 

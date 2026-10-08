@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
@@ -49,7 +50,7 @@ public class PaymentController : ControllerBase
         var payment = await this.paymentRepo.Get(paymentId.ToString());
         if (payment is null)
         {
-            return new NotFoundObjectResult(new MerchantResponse { PaymentId = paymentId.ToString() });
+            return this.Problem(statusCode: StatusCodes.Status404NotFound, detail: $"Payment '{paymentId}' was not found.");
         }
 
         MerchantResponse response = new() { PaymentId = payment.PaymentId, PaymentStatus = payment.Status };
@@ -68,10 +69,13 @@ public class PaymentController : ControllerBase
         List<ValidationError> validationErrors = this.validator.ValidatePayment(payment);
         if (validationErrors.Any())
         {
-            merchantResponse.PaymentStatus = PaymentStatus.Rejected;
-            merchantResponse.ValidationErrors = validationErrors;
+            foreach (ValidationError validationError in validationErrors)
+            {
+                this.ModelState.AddModelError(validationError.Field, validationError.ErrorMessage);
+            }
 
-            return new BadRequestObjectResult(merchantResponse);
+            // same factory [ApiController] uses for a malformed body, so both answer the same RFC 9457 validation problem
+            return this.ValidationProblem();
         }
 
         PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);

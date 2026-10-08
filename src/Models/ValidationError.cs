@@ -1,8 +1,9 @@
 namespace PaymentGatewayApi.Models;
 
-// no RFC 9457 for simplicity. https://www.rfc-editor.org/info/rfc9457/
+// https://www.rfc-editor.org/info/rfc9457/
+// one entry of the RFC 9457 validation problem: Field is the key under "errors", ErrorMessage one of its messages
 public class ValidationError
 {
-    public required ValidationErrorCode ErrorCode { get; set; }
+    public required string Field { get; set; }
     public required string ErrorMessage { get; set; }
 }
