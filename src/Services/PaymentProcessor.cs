@@ -37,7 +37,7 @@ public class PaymentProcessor : IPaymentProcessor
         BankResponse? bankResponse = await this.bankHttpClient.PostPayment(paymentRequest);
         PaymentDb paymentDb = await this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);
 
-        if (paymentDb.Status == PaymentStatus.Authorized)
+        if (paymentDb.Status == PaymentStatus.Authorized || paymentDb.Status == PaymentStatus.Declined)
         {
             await this.paymentRepository.PutComplete(paymentDb);
         }
