@@ -32,6 +32,14 @@ try
             System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 
+    // every error response is an RFC 9457 problem details body (application/problem+json):
+    // validation failures, not found, unhandled exceptions (ErrorMiddleware) and bodiless status codes (UseStatusCodePages)
+    builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Instance = context.HttpContext.Request.Path;
+        context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.Response.Headers["CorrelationId"].ToString();
+    });
+
     // using simple httpClient for dev purposes, ideally should be a separate, fine-tuned library with retries, circuit breaker
     builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
@@ -58,6 +66,7 @@ try
 
     app.UseMiddleware<LogMiddleware>();
     app.UseMiddleware<ErrorMiddleware>();
+    app.UseStatusCodePages();
 
     app.MapControllers();
     app.Run();

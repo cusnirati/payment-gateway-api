@@ -41,7 +41,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
             return new ValidationError
             {
-                ErrorCode = ValidationErrorCode.InvalidCardNumber,
+                Field = "cardNumber",
                 ErrorMessage = "Card number must be a string of 14 to 19 ASCII digits."
             };
         }
@@ -60,7 +60,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
             return new ValidationError
             {
-                ErrorCode = ValidationErrorCode.InvalidDateFormatExpiry,
+                Field = "expiry",
                 ErrorMessage = $"Expiry date '{expiryStr}' is not valid. Expiry month must be 1 to 12 and expiry year a four-digit year."
             };
         }
@@ -77,7 +77,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
             return new ValidationError
             {
-                ErrorCode = ValidationErrorCode.CardExpired,
+                Field = "expiry",
                 ErrorMessage = $"Card expired. Expiry date '{expiryStr}' is before the current month."
             };
         }
@@ -95,7 +95,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
             return new ValidationError
             {
-                ErrorCode = ValidationErrorCode.InvalidCvv,
+                Field = "cvv",
                 ErrorMessage = "CVV must be a string of 3 or 4 ASCII digits."
             };
         }
