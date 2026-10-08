@@ -37,37 +37,52 @@ public class PaymentsRepository : IPaymentsRepository
 
     public async Task<PaymentDb?> Get(string paymentId)
     {
-        // most probably a payment would be in CompletedPayments table
         try
         {
             var dynamoKey = new Dictionary<string, AttributeValue>
             {
                 ["PaymentId"] = new AttributeValue { S = paymentId }
             };
-            var request = new GetItemRequest()
+            var getFromCompletedTransaction = new TransactGetItem()
             {
-                Key = dynamoKey,
-                TableName = this.CompletedPaymentsTable
+                Get = new Get
+                {
+                    TableName = this.CompletedPaymentsTable,
+                    Key = dynamoKey
+                }
+            };
+            var getFromPendingTransaction = new TransactGetItem()
+            {
+                Get = new Get
+                {
+                    TableName = this.PendingPaymentsTable,
+                    Key = dynamoKey
+                }
             };
 
-            GetItemResponse response = await this.dynamo.GetItemAsync(request);
-            if (response.Item == null || !response.Item.Any())
+            var request = new TransactGetItemsRequest()
             {
-                request = new() { Key = dynamoKey, TableName = this.PendingPaymentsTable };
-                response = await this.dynamo.GetItemAsync(request);
-            }
+                TransactItems = new List<TransactGetItem> { getFromCompletedTransaction, getFromPendingTransaction }
+            };
+
+            TransactGetItemsResponse response = await this.dynamo.TransactGetItemsAsync(request);
+
+            // responses come back in request order, CompletedPayments is first
+            Dictionary<string, AttributeValue>? item = response.Responses?
+                .Select(itemResponse => itemResponse.Item)
+                .FirstOrDefault(responseItem => responseItem != null && responseItem.Any());
 
             PaymentDb? payment = null;
-            if (response.Item != null && response.Item.Any())
+            if (item != null)
             {
-                string raw = response.Item["PaymentRaw"].S;
+                string raw = item["PaymentRaw"].S;
                 payment = JsonSerializer.Deserialize<PaymentDb>(raw);
             }
+
             return payment;
         }
         catch (Exception exception)
         {
-            // throw so ErrorMiddleware.cs answers http 500: returning null would report an unreadable payment as not found
             this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Failed");
             throw;
         }
