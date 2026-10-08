@@ -30,7 +30,6 @@ public class CardDetailsValidator : ICardDetailsValidator
         this.timeProvider = timeProvider;
     }
 
-    // not doing a Luhn check for simplicity
     public ValidationError? ValidateCardNumber(PaymentRequest payment)
     {
         if (!this.cardNumberRegex.IsMatch(payment.CardNumber))
@@ -43,6 +42,39 @@ public class CardDetailsValidator : ICardDetailsValidator
             {
                 Field = "cardNumber",
                 ErrorMessage = "Card number must be a string of 14 to 19 ASCII digits."
+            };
+        }
+
+        // Luhn: from the rightmost (check) digit, double every second digit,
+        // subtract 9 from any result above 9, and the total must be a multiple of 10
+        int sum = 0;
+        bool doubleDigit = false;
+        for (int i = payment.CardNumber.Length - 1; i >= 0; i--)
+        {
+            int digit = payment.CardNumber[i] - '0';
+            if (doubleDigit)
+            {
+                digit *= 2;
+                if (digit > 9)
+                {
+                    digit -= 9;
+                }
+            }
+
+            sum += digit;
+            doubleDigit = !doubleDigit;
+        }
+
+        if (sum % 10 != 0)
+        {
+            this.logger.LogInformation(
+                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
+                payment.PaymentId, "Validator.IsCardNumberLuhnValid", false);
+
+            return new ValidationError
+            {
+                Field = "cardNumber",
+                ErrorMessage = "Card number failed the Luhn checksum."
             };
         }
 
