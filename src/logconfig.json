@@ -16,7 +16,7 @@
         "Name": "Console",
         "Args": {
           "theme": "Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme::Sixteen, Serilog.Sinks.Console",
-          "outputTemplate": "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] TraceId={TraceId}, {Message}{NewLine}"
+          "outputTemplate": "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] {Message}{NewLine}"
         }
       },
       {
