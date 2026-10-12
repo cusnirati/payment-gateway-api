@@ -16,12 +16,12 @@ items:
   - info:
       name: get payment by id guid
       type: http
-      seq: 2
+      seq: 3
     http:
       method: GET
-      url: http://localhost:5067/api/payment/abcbc011-c8d9-484b-a67a-28fbda7461f3
+      url: http://localhost:5067/api/payment/a4da2fdb-584e-44a2-8cb7-1b3c5539f3ea
       headers:
-        - name: X-Client-Id
+        - name: CallerId
           value: bruno-client
       auth: inherit
     settings:
@@ -31,31 +31,14 @@ items:
       maxRedirects: 5
       forwardAuthorizationHeader: true
   - info:
-      name: get health live
-      type: http
-      seq: 7
-    http:
-      method: GET
-      url: http://localhost:5067/health/live
-      headers:
-        - name: X-Client-Id
-          value: bruno-client
-      auth: inherit
-    settings:
-      encodeUrl: true
-      timeout: 0
-      followRedirects: true
-      maxRedirects: 5
-      forwardAuthorizationHeader: true
-  - info:
-      name: get health ready
+      name: get payment health live
       type: http
       seq: 1
     http:
       method: GET
-      url: http://localhost:5067/health/ready
+      url: http://localhost:5067/health/live
       headers:
-        - name: X-Client-Id
+        - name: Callerid
           value: bruno-client
       auth: inherit
     settings:
@@ -67,25 +50,20 @@ items:
   - info:
       name: post payment accepted
       type: http
-      seq: 3
+      seq: 4
     http:
       method: POST
       url: http://localhost:5067/api/payment
       headers:
         - name: Content-Type
           value: application/json
-        - name: Accept
-          value: '*'
-        - name: X-Client-Id
+        - name: CallerId
           value: bruno-client
-        - name: traceparent
-          value: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
-          disabled: true
       body:
         type: json
         data: |-
           {
-            "cardnumber": "2222405343248873",
+            "cardnumber": "2223000000000007",
             "ExpiryMonth": "11",
             "ExpiryYear": "2026",
             "currency": "GBP",
@@ -109,18 +87,13 @@ items:
       headers:
         - name: Content-Type
           value: application/json
-        - name: Accept
-          value: '*'
-        - name: X-Client-Id
+        - name: CallerId
           value: bruno-client
-        - name: traceparent
-          value: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
-          disabled: true
       body:
         type: json
         data: |-
           {
-            "cardnumber": "2222405343248872",
+            "cardnumber": "5123450000000008",
             "ExpiryMonth": "11",
             "ExpiryYear": "2027",
             "currency": "GBP",
@@ -137,25 +110,20 @@ items:
   - info:
       name: post payment error 500
       type: http
-      seq: 5
+      seq: 6
     http:
       method: POST
       url: http://localhost:5067/api/payment
       headers:
         - name: Content-Type
           value: application/json
-        - name: Accept
-          value: '*'
-        - name: X-Client-Id
+        - name: CallerId
           value: bruno-client
-        - name: traceparent
-          value: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
-          disabled: true
       body:
         type: json
         data: |-
           {
-            "cardnumber": "2222405343248870",
+            "cardnumber": "4318722273695740",
             "ExpiryMonth": "11",
             "ExpiryYear": "2027",
             "currency": "GBP",
@@ -172,7 +140,7 @@ items:
   - info:
       name: post simulator payment
       type: http
-      seq: 6
+      seq: 7
     http:
       method: POST
       url: http://localhost:8080/payments
@@ -198,11 +166,28 @@ items:
       followRedirects: true
       maxRedirects: 5
       forwardAuthorizationHeader: true
+  - info:
+      name: get payment health ready
+      type: http
+      seq: 2
+    http:
+      method: GET
+      url: http://localhost:5067/health/ready
+      headers:
+        - name: Callerid
+          value: bruno-client
+      auth: inherit
+    settings:
+      encodeUrl: true
+      timeout: 0
+      followRedirects: true
+      maxRedirects: 5
+      forwardAuthorizationHeader: true
 bundled: true
 extensions:
   bruno:
     ignore:
       - node_modules
       - .git
-    exportedAt: '2026-10-02T21:33:25.347Z'
+    exportedAt: '2026-10-12T20:35:19.546Z'
     exportedUsing: Bruno
