@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -17,23 +18,16 @@ public class LogMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        string? correlationId;
-        string? correlationHeader = context.Request.Headers["CorrelationId"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(correlationHeader))
+        // W3C trace context response header (00-traceId-spanId-flags), set before the pipeline runs,
+        // headers are read-only once the response has started
+        string? traceResponse = Activity.Current?.Id;
+        if (traceResponse is not null)
         {
-            correlationId = correlationHeader;
+            context.Response.Headers["traceresponse"] = traceResponse;
         }
-        else 
-        {
-            correlationId = Guid.NewGuid().ToString();
-        }
-
-        // set before the pipeline runs, headers are read-only once the response has started
-        context.Response.Headers["CorrelationId"] = correlationId;
 
         // this is not a customer facing service in the DMZ so we skip some security checks like header validation and sanitization
         using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"].FirstOrDefault()))
-        using (LogContext.PushProperty("CorrelationId", correlationId))
         {
             await this.next(context);
         }

@@ -39,7 +39,6 @@ public class ErrorMiddleware
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-            // RFC 9457 body like every other error; the exception stays in the logs, correlationId links the caller to them
             await this.problemDetailsService.TryWriteAsync(new ProblemDetailsContext { HttpContext = context, Exception = exception });
         }
     }

@@ -1,9 +1,12 @@
 using System;
+using System.Diagnostics;
 using Amazon.DynamoDBv2;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using PaymentGatewayApi.Middleware;
 using PaymentGatewayApi.Services;
 using PaymentGatewayApi.Services.Validators;
@@ -20,6 +23,14 @@ try
         .ReadFrom.Configuration(sp.GetRequiredService<IConfiguration>())
         .ReadFrom.Services(sp));
 
+    // W3C trace context is our correlation id: an incoming traceparent is continued, otherwise a new trace starts,
+    // and HttpClient forwards it to the bank. No exporter, the ids end up in the Serilog sinks
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource.AddService("payment-gateway-api"))
+        .WithTracing(tracing => tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation());
+
     builder.Services.AddControllers().AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.DefaultIgnoreCondition =
@@ -31,7 +42,8 @@ try
     builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     {
         context.ProblemDetails.Instance = context.HttpContext.Request.Path;
-        context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.Response.Headers["CorrelationId"].ToString();
+        // same 32-hex value as TraceId in the logs, so the caller can hand it over for a lookup
+        context.ProblemDetails.Extensions["traceId"] = Activity.Current?.TraceId.ToString();
     });
 
     // using simple httpClient for dev purposes, ideally should be a separate, fine-tuned library with retries, circuit breaker
