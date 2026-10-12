@@ -33,7 +33,6 @@ services:
       - dynamodb-init
       - bank-simulator-wiremock
 
-
   dynamodb:
     container_name: dynamodb-local
     image: amazon/dynamodb-local:3.3.1
