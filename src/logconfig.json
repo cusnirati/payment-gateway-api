@@ -16,14 +16,14 @@
         "Name": "Console",
         "Args": {
           "theme": "Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme::Sixteen, Serilog.Sinks.Console",
-          "outputTemplate": "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}], {Message}{NewLine}"
+          "outputTemplate": "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] TraceId={TraceId}, {Message}{NewLine}"
         }
       },
       {
         "Name": "File",
         "Args": {
           "path": "z-logs/info-.log",
-          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] X-Client-Id={X-Client-Id:l}, {Message}, Source={SourceContext}{NewLine}",
+          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] X-Client-Id={X-Client-Id:l}, TraceId={TraceId}, SpanId={SpanId}, {Message}, Source={SourceContext}{NewLine}",
           "rollingInterval": "Day"
         }
       },
@@ -31,7 +31,7 @@
         "Name": "File",
         "Args": {
           "path": "z-logs/error-.log",
-          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] X-Client-Id={X-Client-Id:l}, {Message}, Source={SourceContext}{NewLine}Exception={Exception}{NewLine}",
+          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] X-Client-Id={X-Client-Id:l}, TraceId={TraceId}, SpanId={SpanId}, {Message}, Source={SourceContext}{NewLine}Exception={Exception}{NewLine}",
           "rollingInterval": "Day",
           "restrictedToMinimumLevel": "Warning"
         }

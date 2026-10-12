@@ -21,7 +21,7 @@ items:
       method: GET
       url: http://localhost:5067/api/payment/abcbc011-c8d9-484b-a67a-28fbda7461f3
       headers:
-        - name: CallerId
+        - name: X-Client-Id
           value: bruno-client
       auth: inherit
     settings:
@@ -38,7 +38,7 @@ items:
       method: GET
       url: http://localhost:5067/health/live
       headers:
-        - name: CallerId
+        - name: X-Client-Id
           value: bruno-client
       auth: inherit
     settings:
@@ -55,7 +55,7 @@ items:
       method: GET
       url: http://localhost:5067/health/ready
       headers:
-        - name: CallerId
+        - name: X-Client-Id
           value: bruno-client
       auth: inherit
     settings:
@@ -76,10 +76,10 @@ items:
           value: application/json
         - name: Accept
           value: '*'
-        - name: CallerId
+        - name: X-Client-Id
           value: bruno-client
-        - name: CorrelationId
-          value: '12345'
+        - name: traceparent
+          value: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
           disabled: true
       body:
         type: json
@@ -111,10 +111,10 @@ items:
           value: application/json
         - name: Accept
           value: '*'
-        - name: CallerId
+        - name: X-Client-Id
           value: bruno-client
-        - name: CorrelationId
-          value: '12345'
+        - name: traceparent
+          value: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
           disabled: true
       body:
         type: json
@@ -146,10 +146,10 @@ items:
           value: application/json
         - name: Accept
           value: '*'
-        - name: CallerId
+        - name: X-Client-Id
           value: bruno-client
-        - name: CorrelationId
-          value: '12345'
+        - name: traceparent
+          value: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
           disabled: true
       body:
         type: json
