@@ -8,11 +8,8 @@ using Microsoft.Extensions.Logging;
 
 namespace PaymentGatewayApi.Services;
 
-// readiness: DynamoDB answers and both payment tables exist and are ACTIVE
 public class DynamoDbHealthCheck : IHealthCheck
 {
-    private readonly string[] Tables = ["PendingPayments", "CompletedPayments"];
-
     private readonly ILogger<DynamoDbHealthCheck> logger;
     private readonly IAmazonDynamoDB dynamo;
 
@@ -22,20 +19,18 @@ public class DynamoDbHealthCheck : IHealthCheck
         this.dynamo = dynamo;
     }
 
-    // probed every few seconds, so only failures are logged
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken)
     {
         try
         {
-            foreach (string table in this.Tables)
+            string table = "PendingPayments";
+            
+            DescribeTableResponse response = await this.dynamo.DescribeTableAsync(table);
+            if (response.Table.TableStatus != TableStatus.ACTIVE)
             {
-                DescribeTableResponse response = await this.dynamo.DescribeTableAsync(table);
-                if (response.Table.TableStatus != TableStatus.ACTIVE)
-                {
-                    this.logger.LogWarning("Operation={Operation}, Status={Status}, Table={Table}, TableStatus={TableStatus}",
-                        "CheckHealth", "Failed", table, response.Table.TableStatus.Value);
-                    return HealthCheckResult.Unhealthy($"Table '{table}' is {response.Table.TableStatus.Value}.");
-                }
+                this.logger.LogWarning("Operation={Operation}, Status={Status}, Table={Table}, TableStatus={TableStatus}",
+                    "CheckHealth", "Failed", table, response.Table.TableStatus.Value);
+                return HealthCheckResult.Unhealthy($"Table '{table}' is {response.Table.TableStatus.Value}.");
             }
 
             return HealthCheckResult.Healthy();
