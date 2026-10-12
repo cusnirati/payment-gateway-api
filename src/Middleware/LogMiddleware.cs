@@ -27,7 +27,7 @@ public class LogMiddleware
         }
 
         // this is not a customer facing service in the DMZ so we skip some security checks like header validation and sanitization
-        using (LogContext.PushProperty("X-Client-Id", context.Request.Headers["X-Client-Id"].FirstOrDefault()))
+        using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"].FirstOrDefault()))
         {
             await this.next(context);
         }

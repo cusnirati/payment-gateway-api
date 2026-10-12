@@ -23,7 +23,7 @@
         "Name": "File",
         "Args": {
           "path": "z-logs/info-.log",
-          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] X-Client-Id={X-Client-Id:l}, TraceId={TraceId}, SpanId={SpanId}, {Message}, Source={SourceContext}{NewLine}",
+          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] CallerId={CallerId:l}, TraceId={TraceId}, SpanId={SpanId}, {Message}, Source={SourceContext}{NewLine}",
           "rollingInterval": "Day"
         }
       },
@@ -31,7 +31,7 @@
         "Name": "File",
         "Args": {
           "path": "z-logs/error-.log",
-          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] X-Client-Id={X-Client-Id:l}, TraceId={TraceId}, SpanId={SpanId}, {Message}, Source={SourceContext}{NewLine}Exception={Exception}{NewLine}",
+          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] CallerId={CallerId:l}, TraceId={TraceId}, SpanId={SpanId}, {Message}, Source={SourceContext}{NewLine}Exception={Exception}{NewLine}",
           "rollingInterval": "Day",
           "restrictedToMinimumLevel": "Warning"
         }
