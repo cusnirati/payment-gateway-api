@@ -31,12 +31,29 @@ items:
       maxRedirects: 5
       forwardAuthorizationHeader: true
   - info:
-      name: get payment health
+      name: get health live
+      type: http
+      seq: 7
+    http:
+      method: GET
+      url: http://localhost:5067/health/live
+      headers:
+        - name: CallerId
+          value: bruno-client
+      auth: inherit
+    settings:
+      encodeUrl: true
+      timeout: 0
+      followRedirects: true
+      maxRedirects: 5
+      forwardAuthorizationHeader: true
+  - info:
+      name: get health ready
       type: http
       seq: 1
     http:
       method: GET
-      url: http://localhost:5067/api/payment
+      url: http://localhost:5067/health/ready
       headers:
         - name: CallerId
           value: bruno-client

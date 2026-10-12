@@ -1,6 +1,7 @@
 using System;
 using Amazon.DynamoDBv2;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PaymentGatewayApi.Middleware;
@@ -51,6 +52,9 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
 
+    builder.Services.AddHealthChecks()
+        .AddCheck<DynamoDbHealthCheck>("dynamodb", tags: ["ready"]);
+
     builder.Services.AddScoped<IValidationOrchestrator, ValidationOrchestrator>();
     builder.Services.AddScoped<ICardDetailsValidator, CardDetailsValidator>();
     builder.Services.AddScoped<IPaymentDetailsValidator, PaymentDetailsValidator>();
@@ -69,6 +73,11 @@ try
     app.UseStatusCodePages();
 
     app.MapControllers();
+
+    // curl http://localhost:5067/health/live
+    app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+    // curl http://localhost:5067/health/ready
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
     app.Run();
 }
 catch (Exception exception)

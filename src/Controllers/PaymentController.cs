@@ -33,15 +33,6 @@ public class PaymentController : ControllerBase
         this.paymentProcessor = paymentProcessor;
     }
 
-    // curl -k http://localhost:5067/api/payment
-    [HttpGet()]
-    public ActionResult<string> GetHealthcheck()
-    {
-        this.logger.LogInformation("Operation={Operation}, Status={Status}", "GetHealthcheck", "Started");
-
-        return new OkObjectResult("ok");
-    }
-
     [HttpGet("{paymentId:guid}")]
     public async Task<ActionResult<MerchantResponse>> GetPayment(Guid paymentId)
     {

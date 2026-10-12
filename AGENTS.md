@@ -58,16 +58,21 @@ cd src && docker compose --profile api up -d --build    # api on :5067, same por
 dotnet test --project tests/PaymentGatewayApiEndToEndTests
 ```
 
-An assembly fixture (`ApiFixture`) polls the healthcheck for 30s before failing. The base URL
+An assembly fixture (`ApiFixture`) polls the API for 30s before failing. It still polls the removed
+`GET api/payment` (now a `405`), as does `Healthcheck_ReturnsOk`, so both need repointing at `/health/ready`. The base URL
 defaults to `http://localhost:5067`; override it with `E2E_BASE_URL` (e.g. to run against
 `dotnet run` instead of the container). No resilience handler is configured on the bank
 `HttpClient` (it is commented out in `Program.cs`), so the simulator's `503` is not retried.
 The bank `HttpClient` has an explicit 10s timeout; a timeout is caught in `BankHttpClient` like
 any other transport failure and surfaces as `InternalError`.
-The healthcheck's `"ok"` comes back as `text/plain`, not a JSON string. Every error response is an
+Health checks: `GET /health/live` runs no checks (the process answering is enough), `GET /health/ready`
+also runs `DynamoDbHealthCheck` (DynamoDB reachable, both tables `ACTIVE`). Both answer `text/plain`
+`Healthy` (200) or `Unhealthy` (503), the only error body that is not problem details. The compose `api`
+service's `healthcheck` curls `/health/ready` (the `Dockerfile` installs curl, the aspnet image lacks it).
+Every other error response is an
 RFC 9457 problem details body (`application/problem+json`), see Error handling below.
 
-For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health,
+For manual checks, use the Bruno collection at `tests/bruno-collection.yml` (covers health live/ready,
 get-by-id, authorized/declined/500 posts, and a direct simulator post), or the `curl` lines
 written above each action in `Controllers/PaymentController.cs`.
 
@@ -123,6 +128,8 @@ a typed client registered through `AddHttpClient<IBankHttpClient, BankHttpClient
 (transient, gets its own `HttpClient`). The repository is a singleton, as is the
 `IAmazonDynamoDB` client registered through `AddAWSService<IAmazonDynamoDB>()`. New services follow the existing pattern — interface
 and implementation in the same file under `Services/` — and get registered there.
+`AddHealthChecks()` registers `DynamoDbHealthCheck` (`Services/DynamoDbHealthCheck.cs`) tagged `ready`;
+`MapHealthChecks` maps `/health/live` (no checks) and `/health/ready` (checks tagged `ready`).
 
 Middleware order is `LogMiddleware`, `ErrorMiddleware`, then `UseStatusCodePages()`.
 
