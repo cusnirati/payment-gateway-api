@@ -17,23 +17,8 @@ public class LogMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        string? correlationId;
-        string? correlationHeader = context.Request.Headers["CorrelationId"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(correlationHeader))
-        {
-            correlationId = correlationHeader;
-        }
-        else 
-        {
-            correlationId = Guid.NewGuid().ToString();
-        }
-
-        // set before the pipeline runs, headers are read-only once the response has started
-        context.Response.Headers["CorrelationId"] = correlationId;
-
         // this is not a customer facing service in the DMZ so we skip some security checks like header validation and sanitization
-        using (LogContext.PushProperty("CallerId", context.Request.Headers["CallerId"].FirstOrDefault()))
-        using (LogContext.PushProperty("CorrelationId", correlationId))
+        using (LogContext.PushProperty("X-Client-Id", context.Request.Headers["X-Client-Id"].FirstOrDefault()))
         {
             await this.next(context);
         }

@@ -31,7 +31,6 @@ try
     builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     {
         context.ProblemDetails.Instance = context.HttpContext.Request.Path;
-        context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.Response.Headers["CorrelationId"].ToString();
     });
 
     // using simple httpClient for dev purposes, ideally should be a separate, fine-tuned library with retries, circuit breaker
