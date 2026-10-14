@@ -21,8 +21,8 @@ public interface IPaymentsRepository
 // PaymentRaw should be versioned for compatibility
 public class PaymentsRepository : IPaymentsRepository
 {
-    private readonly string CompletedPaymentsTable = "CompletedPayments";
-    private readonly string PendingPaymentsTable = "PendingPayments";
+    private const string CompletedPaymentsTable = "CompletedPayments";
+    private const string PendingPaymentsTable = "PendingPayments";
 
     private readonly ILogger<PaymentsRepository> logger;
     private readonly IAmazonDynamoDB dynamo;
@@ -47,7 +47,7 @@ public class PaymentsRepository : IPaymentsRepository
             {
                 Get = new Get
                 {
-                    TableName = this.CompletedPaymentsTable,
+                    TableName = CompletedPaymentsTable,
                     Key = dynamoKey
                 }
             };
@@ -55,7 +55,7 @@ public class PaymentsRepository : IPaymentsRepository
             {
                 Get = new Get
                 {
-                    TableName = this.PendingPaymentsTable,
+                    TableName = PendingPaymentsTable,
                     Key = dynamoKey
                 }
             };
@@ -110,7 +110,7 @@ public class PaymentsRepository : IPaymentsRepository
                 ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
             };
 
-            await this.dynamo.PutItemAsync(this.PendingPaymentsTable, item);
+            await this.dynamo.PutItemAsync(PendingPaymentsTable, item);
         }
         catch (Exception exception)
         {
@@ -136,7 +136,7 @@ public class PaymentsRepository : IPaymentsRepository
             {
                 Put = new Put
                 {
-                    TableName = this.CompletedPaymentsTable,
+                    TableName = CompletedPaymentsTable,
                     Item = item
                 }
             };
@@ -144,7 +144,7 @@ public class PaymentsRepository : IPaymentsRepository
             {
                 Delete = new Delete
                 {
-                    TableName = this.PendingPaymentsTable,
+                    TableName = PendingPaymentsTable,
                     Key = new Dictionary<string, AttributeValue> { ["PaymentId"] = new AttributeValue { S = payment.PaymentId } }
                 }
             };
