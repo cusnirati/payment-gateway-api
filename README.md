@@ -13,8 +13,29 @@ To run / debug, use the below commands from the ```src``` folder
 docker compose up
 dotnet run # or debug via your IDE
 ```
+
 or run everything from docker
 ```bash
 docker compose --profile api up
+## docker compose --profile api down
+```
+
+
+To send a payment, use postman / bruno and the collection in ```tests/bruno-collection.yml```
+
+or send directly via curl
+```bash
+curl --request POST \
+  --url http://localhost:5067/api/payment \
+  --header 'CallerId: bruno-client' \
+  --header 'Content-Type: application/json' \
+  --data '{
+  "cardnumber": "2223000000000007",
+  "ExpiryMonth": "11",
+  "ExpiryYear": "2026",
+  "currency": "GBP",
+  "amount": 100,
+  "cvv": "123"
+}'
 ```
 
