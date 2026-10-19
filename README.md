@@ -15,9 +15,9 @@ dotnet run # or debug via your IDE
 ```
 
 or run everything from docker
+
 ```bash
 docker compose --profile api up
-## docker compose --profile api down
 ```
 
 
