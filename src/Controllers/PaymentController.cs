@@ -68,7 +68,6 @@ public class PaymentController : ControllerBase
                 this.ModelState.AddModelError(validationError.Field, validationError.ErrorMessage);
             }
 
-            // same factory [ApiController] uses for a malformed body, so both answer the same RFC 9457 validation problem
             return this.ValidationProblem();
         }
 
