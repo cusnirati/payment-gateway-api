@@ -17,9 +17,9 @@ public interface ICardDetailsValidator
 public class CardDetailsValidator : ICardDetailsValidator
 {
     // 14 to 19 ASCII digits
-    private readonly Regex cardNumberRegex = new(@"^[0-9]{14,19}$", RegexOptions.Compiled);
+    private readonly Regex cardNumberRegex = new(@"^[0-9]{14,19}\z", RegexOptions.Compiled);
     // 3 to 4 ASCII digits
-    private readonly Regex cvvRegex = new(@"^[0-9]{3,4}$", RegexOptions.Compiled);
+    private readonly Regex cvvRegex = new(@"^[0-9]{3,4}\z", RegexOptions.Compiled);
 
     private readonly ILogger<CardDetailsValidator> logger;
     private readonly TimeProvider timeProvider;

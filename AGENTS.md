@@ -23,7 +23,6 @@ Dependencies (DynamoDB Local on :8000, WireMock bank simulator on :8080), from `
 ## Test
 
     dotnet test --project tests/PaymentGatewayApiUnitTests
-    dotnet test --project tests/PaymentGatewayApiEndToEndTests   # needs the full stack (compose --profile api)
 
 Always pass `--project`; a bare `dotnet test` fails. Manual checks: `tests/bruno-collection.yml`.
 The simulator's response depends on the card number's last digit, see `src/Simulators/wiremock/mappings/`.
