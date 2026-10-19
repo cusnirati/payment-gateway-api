@@ -10,7 +10,7 @@ public static class TestData
     {
         return new PaymentRequest
         {
-            CardNumber = "2222405343248873",
+            CardNumber = "2223000000000007",
             Cvv = "123",
             Currency = "GBP",
             ExpiryMonth = 11,

@@ -4,7 +4,7 @@ namespace PaymentGatewayApi.Models.Requests;
 
 // example json payload
 // {
-//   "card_number": "2222405343248873",
+//   "card_number": "2223000000000007",
 //   "cvv": "123",
 //   "expiry_date": "04/2025",
 //   "amount": 100,

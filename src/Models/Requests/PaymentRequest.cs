@@ -2,7 +2,7 @@ namespace PaymentGatewayApi.Models.Requests;
 
 // example json payload
 // {
-//   "cardnumber": "2222405343248873",
+//   "cardnumber": "2223000000000007",
 //   "ExpiryMonth": "11",
 //   "ExpiryYear": "2027",
 //   "currency": "GBP",
