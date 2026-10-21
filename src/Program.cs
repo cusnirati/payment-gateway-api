@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using PaymentGatewayApi.Middleware;
 using PaymentGatewayApi.Services;
 using PaymentGatewayApi.Services.Validators;
+using Polly;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -46,8 +48,13 @@ try
         context.ProblemDetails.Extensions["traceId"] = Activity.Current?.TraceId.ToString();
     });
 
-    // using simple httpClient for dev purposes, ideally should be a separate, fine-tuned library with retries, circuit breaker
-    builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
+    // demo setup: the bank call is retried once (2 attempts total) without backoff, only on transient failures
+    // (network error, per-attempt timeout, 408, 429, 5xx); ideally fine-tuned with backoff and a circuit breaker
+    // HttpClient.Timeout caps the whole call including the retry, so it covers 2 attempts of 10s
+    builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>(client => client.Timeout = TimeSpan.FromSeconds(25))
+        .AddResilienceHandler("bank", pipeline => pipeline
+            .AddRetry(new HttpRetryStrategyOptions { MaxRetryAttempts = 1, Delay = TimeSpan.Zero })
+            .AddTimeout(TimeSpan.FromSeconds(10)));
 
     var awsOptions = builder.Configuration.GetAWSOptions();
     awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
