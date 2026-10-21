@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Logging;
-using PaymentGatewayApi.Models.Requests;
 using PaymentGatewayApi.Models.Responses;
 
 namespace PaymentGatewayApi.Services;
@@ -14,15 +13,13 @@ namespace PaymentGatewayApi.Services;
 public interface IPaymentsRepository
 {
     Task<PaymentDb?> Get(string paymentId);
-    Task PutPending(PaymentRequest payment);
-    Task PutComplete(PaymentDb payment);
+    Task Put(PaymentDb payment);
 }
 
 // PaymentRaw should be versioned for compatibility
 public class PaymentsRepository : IPaymentsRepository
 {
-    private const string CompletedPaymentsTable = "CompletedPayments";
-    private const string PendingPaymentsTable = "PendingPayments";
+    private const string PaymentsTable = "Payments";
 
     private readonly ILogger<PaymentsRepository> logger;
     private readonly IAmazonDynamoDB dynamo;
@@ -43,39 +40,13 @@ public class PaymentsRepository : IPaymentsRepository
             {
                 ["PaymentId"] = new AttributeValue { S = paymentId }
             };
-            var getFromCompletedTransaction = new TransactGetItem()
-            {
-                Get = new Get
-                {
-                    TableName = CompletedPaymentsTable,
-                    Key = dynamoKey
-                }
-            };
-            var getFromPendingTransaction = new TransactGetItem()
-            {
-                Get = new Get
-                {
-                    TableName = PendingPaymentsTable,
-                    Key = dynamoKey
-                }
-            };
 
-            var request = new TransactGetItemsRequest()
-            {
-                TransactItems = new List<TransactGetItem> { getFromCompletedTransaction, getFromPendingTransaction }
-            };
-
-            TransactGetItemsResponse response = await this.dynamo.TransactGetItemsAsync(request);
-
-            // responses come back in request order, CompletedPayments is first
-            Dictionary<string, AttributeValue>? item = response.Responses?
-                .Select(itemResponse => itemResponse.Item)
-                .FirstOrDefault(responseItem => responseItem != null && responseItem.Any());
+            GetItemResponse response = await this.dynamo.GetItemAsync(PaymentsTable, dynamoKey);
 
             PaymentDb? payment = null;
-            if (item != null)
+            if (response.Item != null && response.Item.Any())
             {
-                string raw = item["PaymentRaw"].S;
+                string raw = response.Item["PaymentRaw"].S;
                 payment = JsonSerializer.Deserialize<PaymentDb>(raw);
             }
 
@@ -88,40 +59,7 @@ public class PaymentsRepository : IPaymentsRepository
         }
     }
 
-    public async Task PutPending(PaymentRequest paymentRequest)
-    {
-        try
-        {
-            var payment = new PaymentDb
-            {
-                CardNumberLastFour = paymentRequest.CardNumber.Substring(paymentRequest.CardNumber.Length - 4),
-                ExpiryMonth = paymentRequest.ExpiryMonth,
-                ExpiryYear = paymentRequest.ExpiryYear,
-                Amount = paymentRequest.Amount,
-                Currency = paymentRequest.Currency,
-                PaymentId = paymentRequest.PaymentId,
-                Status = Models.PaymentStatus.Pending
-            };
-
-            var item = new Dictionary<string, AttributeValue>
-            {
-                ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
-                ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
-                ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
-            };
-
-            await this.dynamo.PutItemAsync(PendingPaymentsTable, item);
-        }
-        catch (Exception exception)
-        {
-            // throw exception so ErrorMiddleware answers 500
-            // the bank must not be called for a payment we cannot store in the db + an alert would be set
-            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "AddPayment", "Failed");
-            throw;
-        }
-    }
-
-    public async Task PutComplete(PaymentDb payment)
+    public async Task Put(PaymentDb payment)
     {
         try
         {
@@ -132,40 +70,16 @@ public class PaymentsRepository : IPaymentsRepository
                 ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
             };
 
-            var addToCompletedTransaction = new TransactWriteItem()
-            {
-                Put = new Put
-                {
-                    TableName = CompletedPaymentsTable,
-                    Item = item
-                }
-            };
-            var deleteFromPendingTransaction = new TransactWriteItem()
-            {
-                Delete = new Delete
-                {
-                    TableName = PendingPaymentsTable,
-                    Key = new Dictionary<string, AttributeValue> { ["PaymentId"] = new AttributeValue { S = payment.PaymentId } }
-                }
-            };
-
-            // a payment can be only in 1 table
-            var request = new TransactWriteItemsRequest()
-            {
-                TransactItems = new List<TransactWriteItem> { addToCompletedTransaction, deleteFromPendingTransaction }
-            };
-
-            await this.dynamo.TransactWriteItemsAsync(request);
+            await this.dynamo.PutItemAsync(PaymentsTable, item);
         }
         catch (Exception exception)
         {
             // the bank has already answered, so throwing back 500 here would hide an authorized payment
-            // the payment stays in PendingPayments, which is what reconciliation picks up; PaymentRaw keeps the bank outcome
-            // we would have an alert in monitoring for this scenario, should never happen
+            // the merchant still gets the status, but a later GET answers 404; we would have an alert in monitoring for this
             this.logger.LogError(
                 exception,
                 "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
-                payment.PaymentId, "CompletePayment", "Failed");
+                payment.PaymentId, "PutPayment", "Failed");
         }
     }
 }

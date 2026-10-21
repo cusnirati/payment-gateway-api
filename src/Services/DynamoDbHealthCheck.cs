@@ -23,7 +23,7 @@ public class DynamoDbHealthCheck : IHealthCheck
     {
         try
         {
-            string table = "PendingPayments";
+            string table = "Payments";
             
             DescribeTableResponse response = await this.dynamo.DescribeTableAsync(table);
             if (response.Table.TableStatus != TableStatus.ACTIVE)

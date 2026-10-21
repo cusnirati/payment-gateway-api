@@ -25,13 +25,6 @@ public class BankResponseProcessor : IBankResponseProcessor
 
     public async Task<PaymentDb> ParseBankResponse(PaymentRequest paymentRequest, BankResponse? bankResponse)
     {
-        if (bankResponse is null)
-        {
-            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", paymentRequest.PaymentId, "ParseBankResponse", "NullResponse", "Failed");
-
-            return new PaymentDb { Status = PaymentStatus.Pending };
-        }
-
         PaymentDb paymentDb = new PaymentDb();
         paymentDb.PaymentId = paymentRequest.PaymentId;
 
@@ -41,6 +34,15 @@ public class BankResponseProcessor : IBankResponseProcessor
 
         paymentDb.Amount = paymentRequest.Amount;
         paymentDb.Currency = paymentRequest.Currency;
+
+        // the bank could not be reached or failed even after the retry
+        if (bankResponse is null)
+        {
+            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", paymentRequest.PaymentId, "ParseBankResponse", "NullResponse", "Failed");
+
+            paymentDb.Status = PaymentStatus.Unavailable;
+            return paymentDb;
+        }
 
         paymentDb.BankAuthorizationCode = bankResponse.AuthorizationCode;
         if (bankResponse.Authorized && !string.IsNullOrWhiteSpace(bankResponse.AuthorizationCode))
