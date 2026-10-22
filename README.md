@@ -1,14 +1,25 @@
-Building a basic payment gateway
+## The objective of this project
+
+The objective is to demo software building principles like SOLID and general system design, not to build a fully production ready solution.
+
+Intentionally kept simple so that it can be easily followed step by step in the payment processing flow.
+
+General notes:
+
+- More verbose logs than the console ones are in directory `z-logs`.
+- Ideally (but adding compolexity) we would have both idempotency and storing in the database a payment once it passed validation (before calling the bank)
+- No authentification for now.
+- Tests like full unit tests and end to end tests might not be up to date
+- I have another project to be deployed along this one (to provide an fx rate), so might change periodically
 
 https://en.wikipedia.org/wiki/Payment_gateway#Typical_transaction_processes
 https://stripe.com/gb/resources/more/payment-gateways-101#how-does-a-payment-gateway-work
 
 
-Intentionally kept simple so that it can demo software building principles like SOLID and general system design.
 
-More verbose logs than the console ones are in directory `z-logs`.
 
-To run / debug, use the below commands from the ```src``` folder
+## To run / debug
+use the below commands from the ```src``` folder
 ```bash
 docker compose up
 dotnet run # or debug via your IDE
@@ -38,5 +49,4 @@ curl --request POST \
   "cvv": "123"
 }'
 ```
-
 
