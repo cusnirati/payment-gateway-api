@@ -17,9 +17,9 @@ public interface ICardDetailsValidator
 public class CardDetailsValidator : ICardDetailsValidator
 {
     // 14 to 19 ASCII digits
-    private readonly Regex cardNumberRegex = new(@"^[0-9]{14,19}\z", RegexOptions.Compiled);
+    private static readonly Regex CardNumberRegex = new(@"^[0-9]{14,19}\z", RegexOptions.Compiled);
     // 3 to 4 ASCII digits
-    private readonly Regex cvvRegex = new(@"^[0-9]{3,4}\z", RegexOptions.Compiled);
+    private static readonly Regex CvvRegex = new(@"^[0-9]{3,4}\z", RegexOptions.Compiled);
 
     private readonly ILogger<CardDetailsValidator> logger;
     private readonly TimeProvider timeProvider;
@@ -32,7 +32,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
     public ValidationError? ValidateCardNumber(PaymentRequest payment)
     {
-        if (!this.cardNumberRegex.IsMatch(payment.CardNumber))
+        if (!CardNumberRegex.IsMatch(payment.CardNumber))
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
@@ -119,7 +119,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
     public ValidationError? ValidateCardCvv(PaymentRequest payment)
     {
-        if (!this.cvvRegex.IsMatch(payment.Cvv))
+        if (!CvvRegex.IsMatch(payment.Cvv))
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
