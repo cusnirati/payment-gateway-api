@@ -49,7 +49,7 @@ public class PaymentController : ControllerBase
         return new OkObjectResult(response);
     }
 
-    [HttpPost()]
+    [HttpPost]
     public async Task<ActionResult<MerchantResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
         // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference

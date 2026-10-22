@@ -7,10 +7,12 @@ Intentionally kept simple so that it can be easily followed step by step in the 
 General notes:
 
 - More verbose logs than the console ones are in directory `z-logs`.
-- Ideally (but adding compolexity) we would have both idempotency and storing in the database a payment once it passed validation (before calling the bank)
+- Ideally (but adding compolexity) we would have both idempotency and persisting the payment in the database once it passed validation (before calling the bank)
+- For simplicity all failures return for now ```"paymentStatus": "Unavailable"```. Complex failure handling and reconciliation (a stuck payment) is out of scope.
 - No authentification for now.
-- Tests like full unit tests and end to end tests might not be up to date
-- I have another project to be deployed along this one (to provide an fx rate), so might change periodically
+- Tests like full unit tests and end to end tests might not be up to date.
+- I have another project to be deployed along this one (to provide an fx rate), so logic in this one might change periodically.
+
 
 https://en.wikipedia.org/wiki/Payment_gateway#Typical_transaction_processes
 https://stripe.com/gb/resources/more/payment-gateways-101#how-does-a-payment-gateway-work
