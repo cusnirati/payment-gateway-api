@@ -17,6 +17,8 @@ Dependencies (DynamoDB Local on :8000, WireMock bank simulator on :8080), from `
 
     docker compose up -d                  # add --profile api to also run the API container on :5067
 
+Build and run from the repo root:
+
     dotnet build PaymentGatewayApi.slnx
     dotnet run --project src/PaymentGatewayApi.csproj      # http://localhost:5067/swagger
 
