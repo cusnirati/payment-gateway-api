@@ -12,45 +12,44 @@ public class CardDetailsValidatorTests
 {
     private readonly Mock<TimeProvider> timeProvider = new();
     private readonly CardDetailsValidator validator;
+    private readonly PaymentRequest payment = TestPayments.Create();
 
     public CardDetailsValidatorTests()
     {
-        this.timeProvider
-            .Setup(t => t.GetUtcNow())
-            .Returns(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
-
+        this.timeProvider.Setup(t => t.GetUtcNow()).Returns(new DateTimeOffset(2026, 6, 15, 10, 30, 0, TimeSpan.Zero));
         this.validator = new CardDetailsValidator(NullLogger<CardDetailsValidator>.Instance, this.timeProvider.Object);
     }
 
     [Theory]
-    [InlineData("36227206271667")]
+    [InlineData("30569309025904")]
+    [InlineData("378282246310005")]
     [InlineData("4111111111111111")]
-    [InlineData("4000000000000000006")]
-    public void ValidateCardNumber_ValidNumber_ReturnsNull(string cardNumber)
+    [InlineData("60110000000000001")]
+    [InlineData("411111111111111118")]
+    [InlineData("6011000000000000001")]
+    public void ValidateCardNumber_LuhnValid14To19Digits_ReturnsNull(string cardNumber)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.CardNumber = cardNumber;
+        this.payment.CardNumber = cardNumber;
 
-        ValidationError? error = this.validator.ValidateCardNumber(payment);
+        ValidationError? error = this.validator.ValidateCardNumber(this.payment);
 
         Assert.Null(error);
     }
 
     [Theory]
+    [InlineData("4222222222222")] // 13 digits, Luhn valid
+    [InlineData("41111111111111111115")] // 20 digits, Luhn valid
     [InlineData("")]
-    [InlineData("4111111111111")]
-    [InlineData("41111111111111111111")]
     [InlineData("4111 1111 1111 1111")]
     [InlineData("4111-1111-1111-1111")]
     [InlineData("411111111111111a")]
-    [InlineData(" 4111111111111111")]
-    [InlineData("٤١١١١١١١١١١١١١١١")]
-    public void ValidateCardNumber_InvalidFormat_ReturnsFormatError(string cardNumber)
+    [InlineData("4111111111111111\n")] // \z rejects a trailing newline, $ would accept it
+    [InlineData("٤١١١١١١١١١١١١١١١")] // Arabic-Indic digits, \d would accept them
+    public void ValidateCardNumber_NotAsciiDigitsOrWrongLength_ReturnsFormatError(string cardNumber)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.CardNumber = cardNumber;
+        this.payment.CardNumber = cardNumber;
 
-        ValidationError? error = this.validator.ValidateCardNumber(payment);
+        ValidationError? error = this.validator.ValidateCardNumber(this.payment);
 
         Assert.NotNull(error);
         Assert.Equal("cardNumber", error.Field);
@@ -58,15 +57,13 @@ public class CardDetailsValidatorTests
     }
 
     [Theory]
-    [InlineData("36227206271668")]
     [InlineData("4111111111111112")]
-    [InlineData("4000000000000000007")]
-    public void ValidateCardNumber_LuhnFailure_ReturnsLuhnError(string cardNumber)
+    [InlineData("2223000000000008")]
+    public void ValidateCardNumber_LuhnChecksumFails_ReturnsLuhnError(string cardNumber)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.CardNumber = cardNumber;
+        this.payment.CardNumber = cardNumber;
 
-        ValidationError? error = this.validator.ValidateCardNumber(payment);
+        ValidationError? error = this.validator.ValidateCardNumber(this.payment);
 
         Assert.NotNull(error);
         Assert.Equal("cardNumber", error.Field);
@@ -74,86 +71,90 @@ public class CardDetailsValidatorTests
     }
 
     [Theory]
-    [InlineData(10, 2026)]
-    [InlineData(11, 2026)]
+    [InlineData(6, 2026)] // current month
+    [InlineData(7, 2026)]
     [InlineData(1, 2027)]
     [InlineData(12, 2099)]
-    public void ValidateCardExpiry_CurrentOrFutureMonth_ReturnsNull(int month, int year)
+    public void ValidateCardExpiry_CurrentOrFutureMonth_ReturnsNull(int expiryMonth, int expiryYear)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.ExpiryMonth = month;
-        payment.ExpiryYear = year;
+        this.payment.ExpiryMonth = expiryMonth;
+        this.payment.ExpiryYear = expiryYear;
 
-        ValidationError? error = this.validator.ValidateCardExpiry(payment);
+        ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
 
         Assert.Null(error);
     }
 
     [Theory]
-    [InlineData(9, 2026, "09/2026")]
+    [InlineData(5, 2026, "05/2026")]
+    [InlineData(6, 2025, "06/2025")]
     [InlineData(12, 2025, "12/2025")]
-    [InlineData(1, 2000, "01/2000")]
-    public void ValidateCardExpiry_PastMonth_ReturnsExpiredError(int month, int year, string expiryStr)
+    public void ValidateCardExpiry_BeforeCurrentMonth_ReturnsExpiredError(int expiryMonth, int expiryYear, string expiry)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.ExpiryMonth = month;
-        payment.ExpiryYear = year;
+        this.payment.ExpiryMonth = expiryMonth;
+        this.payment.ExpiryYear = expiryYear;
 
-        ValidationError? error = this.validator.ValidateCardExpiry(payment);
+        ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
 
         Assert.NotNull(error);
         Assert.Equal("expiry", error.Field);
-        Assert.Equal($"Card expired. Expiry date '{expiryStr}' is before the current month.", error.ErrorMessage);
-    }
-
-    [Fact]
-    public void ValidateCardExpiry_LastMonthOfPreviousYear_ReturnsExpiredError()
-    {
-        this.timeProvider
-            .Setup(t => t.GetUtcNow())
-            .Returns(new DateTimeOffset(2027, 1, 1, 0, 0, 0, TimeSpan.Zero));
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.ExpiryMonth = 12;
-        payment.ExpiryYear = 2026;
-
-        ValidationError? error = this.validator.ValidateCardExpiry(payment);
-
-        Assert.NotNull(error);
-        Assert.Equal("expiry", error.Field);
+        Assert.Equal($"Card expired. Expiry date '{expiry}' is before the current month.", error.ErrorMessage);
     }
 
     [Theory]
     [InlineData(0, 2027, "00/2027")]
     [InlineData(13, 2027, "13/2027")]
     [InlineData(-1, 2027, "-01/2027")]
-    [InlineData(11, 0, "11/0")]
-    [InlineData(11, 27, "11/27")]
-    [InlineData(11, 999, "11/999")]
-    public void ValidateCardExpiry_InvalidMonthOrYear_ReturnsFormatError(int month, int year, string expiryStr)
+    [InlineData(4, 27, "04/27")]
+    [InlineData(4, 10000, "04/10000")]
+    public void ValidateCardExpiry_InvalidMonthOrYear_ReturnsFormatError(int expiryMonth, int expiryYear, string expiry)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.ExpiryMonth = month;
-        payment.ExpiryYear = year;
+        this.payment.ExpiryMonth = expiryMonth;
+        this.payment.ExpiryYear = expiryYear;
 
-        ValidationError? error = this.validator.ValidateCardExpiry(payment);
+        ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
 
         Assert.NotNull(error);
         Assert.Equal("expiry", error.Field);
         Assert.Equal(
-            $"Expiry date '{expiryStr}' is not valid. Expiry month must be 1 to 12 and expiry year a four-digit year.",
+            $"Expiry date '{expiry}' is not valid. Expiry month must be 1 to 12 and expiry year a four-digit year.",
             error.ErrorMessage);
     }
 
+    [Fact]
+    public void ValidateCardExpiry_LastSecondOfTheExpiryMonth_ReturnsNull()
+    {
+        this.timeProvider.Setup(t => t.GetUtcNow()).Returns(new DateTimeOffset(2026, 12, 31, 23, 59, 59, TimeSpan.Zero));
+        this.payment.ExpiryMonth = 12;
+        this.payment.ExpiryYear = 2026;
+
+        ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
+
+        Assert.Null(error);
+    }
+
+    [Fact]
+    public void ValidateCardExpiry_FirstSecondOfTheNextYear_ReturnsExpiredError()
+    {
+        this.timeProvider.Setup(t => t.GetUtcNow()).Returns(new DateTimeOffset(2027, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        this.payment.ExpiryMonth = 12;
+        this.payment.ExpiryYear = 2026;
+
+        ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
+
+        Assert.NotNull(error);
+        Assert.Equal("Card expired. Expiry date '12/2026' is before the current month.", error.ErrorMessage);
+    }
+
     [Theory]
-    [InlineData("000")]
     [InlineData("123")]
     [InlineData("1234")]
-    public void ValidateCardCvv_ValidCvv_ReturnsNull(string cvv)
+    [InlineData("000")]
+    public void ValidateCardCvv_ThreeOrFourAsciiDigits_ReturnsNull(string cvv)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.Cvv = cvv;
+        this.payment.Cvv = cvv;
 
-        ValidationError? error = this.validator.ValidateCardCvv(payment);
+        ValidationError? error = this.validator.ValidateCardCvv(this.payment);
 
         Assert.Null(error);
     }
@@ -164,14 +165,13 @@ public class CardDetailsValidatorTests
     [InlineData("12345")]
     [InlineData("12a")]
     [InlineData(" 123")]
-    [InlineData("1 23")]
+    [InlineData("123\n")]
     [InlineData("١٢٣")]
-    public void ValidateCardCvv_InvalidCvv_ReturnsError(string cvv)
+    public void ValidateCardCvv_NotThreeOrFourAsciiDigits_ReturnsError(string cvv)
     {
-        PaymentRequest payment = TestData.ValidPaymentRequest();
-        payment.Cvv = cvv;
+        this.payment.Cvv = cvv;
 
-        ValidationError? error = this.validator.ValidateCardCvv(payment);
+        ValidationError? error = this.validator.ValidateCardCvv(this.payment);
 
         Assert.NotNull(error);
         Assert.Equal("cvv", error.Field);

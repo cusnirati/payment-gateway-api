@@ -25,6 +25,7 @@ Build and run from the repo root:
 ## Test
 
     dotnet test --project tests/PaymentGatewayApiUnitTests
+    dotnet test --project tests/PaymentGatewayApiEndToEndTests   # needs the docker compose dependencies running
 
 Always pass `--project`; a bare `dotnet test` fails. Manual checks: `tests/bruno-collection.yml`.
 The simulator's response depends on the card number's last digit, see `src/Simulators/wiremock/mappings/`.
