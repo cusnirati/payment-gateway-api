@@ -18,12 +18,16 @@ public class LogMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // W3C trace context response header (00-traceId-spanId-flags), set before the pipeline runs,
-        // headers are read-only once the response has started
+        // W3C trace context response header (00-traceId-spanId-flags), added right before the headers are sent
+        // so it survives UseExceptionHandler clearing the response
         string? traceResponse = Activity.Current?.Id;
         if (traceResponse is not null)
         {
-            context.Response.Headers["traceresponse"] = traceResponse;
+            context.Response.OnStarting(() =>
+            {
+                context.Response.Headers["traceresponse"] = traceResponse;
+                return Task.CompletedTask;
+            });
         }
 
         // this is not a customer facing service in the DMZ so we skip some security checks like header validation and sanitization

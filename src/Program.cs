@@ -40,18 +40,32 @@ try
     });
 
     // every error response is an RFC 9457 problem details body (application/problem+json):
-    // validation failures, not found, unhandled exceptions (ErrorMiddleware) and bodiless status codes (UseStatusCodePages)
+    // validation failures, not found, unhandled exceptions (ErrorHandler) and bodiless status codes (UseStatusCodePages)
     builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     {
         context.ProblemDetails.Instance = context.HttpContext.Request.Path;
         // same 32-hex value as TraceId in the logs, so the caller can hand it over for a lookup
         context.ProblemDetails.Extensions["traceId"] = Activity.Current?.TraceId.ToString();
     });
+    builder.Services.AddExceptionHandler<ErrorHandler>();
 
     // demo setup: the bank call is retried once (2 attempts total) without backoff, only on transient failures
     // (network error, per-attempt timeout, 408, 429, 5xx); ideally fine-tuned with backoff and a circuit breaker
     // HttpClient.Timeout caps the whole call including the retry, so it covers 2 attempts of 10s
-    builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>(client => client.Timeout = TimeSpan.FromSeconds(25))
+    builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>((serviceProvider, client) =>
+        {
+            string? bankBaseAddress = serviceProvider.GetRequiredService<IConfiguration>()["SimulatorBankBaseAddress"];
+            // on Unix "/payments" parses as an absolute file:// uri, hence the scheme check
+            if (!Uri.TryCreate(bankBaseAddress, UriKind.Absolute, out Uri? bankUri)
+                || (bankUri.Scheme != Uri.UriSchemeHttp && bankUri.Scheme != Uri.UriSchemeHttps))
+            {
+                throw new InvalidOperationException(
+                    $"SimulatorBankBaseAddress must be an absolute http or https url, got '{bankBaseAddress}'");
+            }
+
+            client.BaseAddress = bankUri;
+            client.Timeout = TimeSpan.FromSeconds(25);
+        })
         .AddResilienceHandler("bank", pipeline => pipeline
             .AddRetry(new HttpRetryStrategyOptions { MaxRetryAttempts = 1, Delay = TimeSpan.Zero })
             .AddTimeout(TimeSpan.FromSeconds(10)));
@@ -81,7 +95,7 @@ try
     app.UseSwaggerUI();
 
     app.UseMiddleware<LogMiddleware>();
-    app.UseMiddleware<ErrorMiddleware>();
+    app.UseExceptionHandler();
     app.UseStatusCodePages();
 
     app.MapControllers();
