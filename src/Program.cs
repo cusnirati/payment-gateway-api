@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -106,9 +107,12 @@ try
     app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
     app.Run();
 }
-catch (Exception exception)
+// HostAbortedException is thrown on purpose by tooling (e.g. dotnet ef) that stops the host after building it
+catch (Exception exception) when (exception is not HostAbortedException)
 {
     Log.Fatal(exception, "Operation={Operation}, Status={Status}", "Startup", "Failed");
+    // non-zero so docker (restart: on-failure), CI and other supervisors see the failure
+    Environment.ExitCode = 1;
 }
 finally
 {
