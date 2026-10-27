@@ -44,8 +44,17 @@ public class BankResponseProcessor : IBankResponseProcessor
             return paymentDb;
         }
 
+        // authorized without an authorization code breaks the bank's contract: the outcome is unknown, not a decline
+        if (bankResponse.Authorized && string.IsNullOrWhiteSpace(bankResponse.AuthorizationCode))
+        {
+            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", paymentRequest.PaymentId, "ParseBankResponse", "AuthorizedWithoutAuthorizationCode", "Failed");
+
+            paymentDb.Status = PaymentStatus.Unavailable;
+            return paymentDb;
+        }
+
         paymentDb.BankAuthorizationCode = bankResponse.AuthorizationCode;
-        if (bankResponse.Authorized && !string.IsNullOrWhiteSpace(bankResponse.AuthorizationCode))
+        if (bankResponse.Authorized)
         {
             paymentDb.Status = PaymentStatus.Authorized;
         }
