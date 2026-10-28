@@ -1,9 +1,12 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using Amazon.DynamoDBv2;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
+using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
@@ -22,7 +25,12 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Configuration.AddJsonFile("logconfig.json");
+    var environmentVariables = builder.Configuration.Sources
+        .OfType<EnvironmentVariablesConfigurationSource>()
+        .First(source => string.IsNullOrEmpty(source.Prefix));
+    builder.Configuration.Sources.Insert(
+        builder.Configuration.Sources.IndexOf(environmentVariables),
+        new JsonConfigurationSource { Path = "logconfig.json" });
     builder.Services.AddSerilog((sp, lc) => lc
         .ReadFrom.Configuration(sp.GetRequiredService<IConfiguration>())
         .ReadFrom.Services(sp));
