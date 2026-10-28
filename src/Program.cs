@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using PaymentGatewayApi.Middleware;
@@ -50,21 +51,18 @@ try
     });
     builder.Services.AddExceptionHandler<ErrorHandler>();
 
+    // validated when the host starts, so a bad bank address stops the service at boot instead of failing every request
+    builder.Services.AddOptions<BankOptions>()
+        .Bind(builder.Configuration)
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<BankOptions>, BankOptionsValidator>();
+
     // demo setup: the bank call is retried once (2 attempts total) without backoff, only on transient failures
     // (network error, per-attempt timeout, 408, 429, 5xx); ideally fine-tuned with backoff and a circuit breaker
     // HttpClient.Timeout caps the whole call including the retry, so it covers 2 attempts of 10s
     builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>((serviceProvider, client) =>
         {
-            string? bankBaseAddress = serviceProvider.GetRequiredService<IConfiguration>()["SimulatorBankBaseAddress"];
-            // on Unix "/payments" parses as an absolute file:// uri, hence the scheme check
-            if (!Uri.TryCreate(bankBaseAddress, UriKind.Absolute, out Uri? bankUri)
-                || (bankUri.Scheme != Uri.UriSchemeHttp && bankUri.Scheme != Uri.UriSchemeHttps))
-            {
-                throw new InvalidOperationException(
-                    $"SimulatorBankBaseAddress must be an absolute http or https url, got '{bankBaseAddress}'");
-            }
-
-            client.BaseAddress = bankUri;
+            client.BaseAddress = new Uri(serviceProvider.GetRequiredService<IOptions<BankOptions>>().Value.BaseAddress);
             client.Timeout = TimeSpan.FromSeconds(25);
         })
         .AddResilienceHandler("bank", pipeline => pipeline
