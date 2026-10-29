@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Logging;
-using PaymentGatewayApi.Models.Responses;
+using PaymentGatewayApi.Models;
 
 namespace PaymentGatewayApi.Services;
 

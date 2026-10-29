@@ -1,4 +1,4 @@
-namespace PaymentGatewayApi.Models.Responses;
+namespace PaymentGatewayApi.Models;
 
 public class PaymentDb
 {
