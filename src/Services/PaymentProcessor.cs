@@ -33,7 +33,7 @@ public class PaymentProcessor : IPaymentProcessor
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentRequest.PaymentId, "ExecuteBankPayment", "Started");
         BankResponse? bankResponse = await this.bankHttpClient.PostPayment(paymentRequest);
-        PaymentDb paymentDb = await this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);
+        PaymentDb paymentDb = this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);
 
         // stored once, whatever the outcome (Authorized, Declined or Unavailable)
         await this.paymentRepository.Put(paymentDb);

@@ -1,7 +1,6 @@
 using System;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Models.Requests;
@@ -11,7 +10,7 @@ namespace PaymentGatewayApi.Services;
 
 public interface IBankResponseProcessor
 {
-    Task<PaymentDb> ParseBankResponse(PaymentRequest payment, BankResponse? response);
+    PaymentDb ParseBankResponse(PaymentRequest payment, BankResponse? response);
 }
 
 public class BankResponseProcessor : IBankResponseProcessor
@@ -23,7 +22,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         this.logger = logger;
     }
 
-    public async Task<PaymentDb> ParseBankResponse(PaymentRequest paymentRequest, BankResponse? bankResponse)
+    public PaymentDb ParseBankResponse(PaymentRequest paymentRequest, BankResponse? bankResponse)
     {
         PaymentDb paymentDb = new PaymentDb();
         paymentDb.PaymentId = paymentRequest.PaymentId;
