@@ -34,19 +34,21 @@ public class BankResponseProcessor : IBankResponseProcessor
         paymentDb.Amount = paymentRequest.Amount;
         paymentDb.Currency = paymentRequest.Currency;
 
-        // the bank could not be reached or failed even after the retry
         if (bankResponse is null)
         {
-            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", paymentRequest.PaymentId, "ParseBankResponse", "NullResponse", "Failed");
+            this.logger.LogError(
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Reason={Reason},",
+                paymentRequest.PaymentId, "ParseBankResponse", "Failed", "NullResponse");
 
             paymentDb.Status = PaymentStatus.Unavailable;
             return paymentDb;
         }
 
-        // authorized without an authorization code breaks the bank's contract: the outcome is unknown, not a decline
         if (bankResponse.Authorized && string.IsNullOrWhiteSpace(bankResponse.AuthorizationCode))
         {
-            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", paymentRequest.PaymentId, "ParseBankResponse", "AuthorizedWithoutAuthorizationCode", "Failed");
+            this.logger.LogError(
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Reason={Reason},",
+                paymentRequest.PaymentId, "ParseBankResponse", "Failed", "MissingAuthorizationCode");
 
             paymentDb.Status = PaymentStatus.Unavailable;
             return paymentDb;
@@ -64,7 +66,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         }
 
         this.logger.LogInformation(
-            "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Authorized={Authorized}",
+            "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentStatus={PaymentStatus}",
             paymentDb.PaymentId, "ParseBankResponse", "Completed", paymentDb.Status);
 
         return paymentDb;
