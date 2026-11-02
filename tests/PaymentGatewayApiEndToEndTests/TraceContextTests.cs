@@ -23,7 +23,7 @@ public class TraceContextTests
     public async Task Request_WithTraceparent_ContinuesThatTrace()
     {
         string traceId = ActivityTraceId.CreateRandom().ToHexString();
-        using HttpRequestMessage request = new(HttpMethod.Get, $"api/payment/{Guid.NewGuid()}");
+        using HttpRequestMessage request = new(HttpMethod.Get, $"api/payments/{Guid.NewGuid()}");
         request.Headers.Add("traceparent", $"00-{traceId}-{ActivitySpanId.CreateRandom().ToHexString()}-01");
 
         using HttpResponseMessage response = await this.fixture.Api.SendAsync(request);
@@ -37,7 +37,7 @@ public class TraceContextTests
     public async Task PostPayment_WithTraceparent_PassesTheTraceOnToTheBank()
     {
         string traceId = ActivityTraceId.CreateRandom().ToHexString();
-        using HttpRequestMessage request = new(HttpMethod.Post, "api/payment")
+        using HttpRequestMessage request = new(HttpMethod.Post, "api/payments")
         {
             Content = JsonContent.Create(TestPayments.Create(TestPayments.AuthorizedCard))
         };

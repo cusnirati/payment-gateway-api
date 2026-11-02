@@ -23,7 +23,7 @@ public class SwaggerTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         JsonElement paths = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("paths");
-        Assert.True(paths.GetProperty("/api/Payment").TryGetProperty("post", out _));
-        Assert.True(paths.GetProperty("/api/Payment/{paymentId}").TryGetProperty("get", out _));
+        Assert.True(paths.GetProperty("/api/payments").TryGetProperty("post", out _));
+        Assert.True(paths.GetProperty("/api/payments/{paymentId}").TryGetProperty("get", out _));
     }
 }
