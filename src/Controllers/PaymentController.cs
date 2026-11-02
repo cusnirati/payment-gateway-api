@@ -32,6 +32,9 @@ public class PaymentController : ControllerBase
     }
 
     [HttpGet("{paymentId:guid}")]
+    [ProducesResponseType<MerchantResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public async Task<ActionResult<MerchantResponse>> GetPayment(Guid paymentId)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Started");
@@ -48,6 +51,9 @@ public class PaymentController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType<MerchantResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public async Task<ActionResult<MerchantResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
         // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference
