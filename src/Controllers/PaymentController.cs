@@ -72,7 +72,7 @@ public class PaymentController : ControllerBase
         PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
         merchantResponse.PaymentStatus = paymentResponse.Status;
 
-        return new OkObjectResult(merchantResponse);
+        return this.CreatedAtAction(nameof(this.GetPayment), new { paymentId = payment.PaymentId }, merchantResponse);
     }
 }
 
