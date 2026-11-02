@@ -43,7 +43,7 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
 
     public ValidationError? ValidateCurrencyCode(PaymentRequest payment)
     {
-        if (!this.options.SupportedCurrencies.Contains(payment.Currency, StringComparer.OrdinalIgnoreCase))
+        if (!this.options.SupportedCurrencies.Contains(payment.Currency))
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",

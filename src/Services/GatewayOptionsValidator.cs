@@ -26,6 +26,12 @@ public class GatewayOptionsValidator : IValidateOptions<GatewayOptions>
             return ValidateOptionsResult.Fail("SupportedCurrencies must not contain blank entries");
         }
 
+        // incoming currencies are upper-cased and matched ordinally, so lower case entries here would never match
+        if (options.SupportedCurrencies.Any(currency => currency != currency.ToUpperInvariant()))
+        {
+            return ValidateOptionsResult.Fail("SupportedCurrencies entries must be upper case ISO 4217 codes");
+        }
+
         return ValidateOptionsResult.Success;
     }
 }
