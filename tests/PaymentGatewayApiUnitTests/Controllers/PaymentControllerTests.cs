@@ -71,7 +71,7 @@ public class PaymentControllerTests
     }
 
     [Fact]
-    public async Task PostPayment_ValidPayment_ReturnsTheProcessedStatusUnderANewPaymentId()
+    public async Task PostPayment_ValidPayment_Returns201WithTheProcessedStatusUnderANewPaymentId()
     {
         PaymentRequest payment = TestPayments.Create();
         payment.PaymentId = "chosen-by-the-merchant";
@@ -79,11 +79,16 @@ public class PaymentControllerTests
 
         ActionResult<MerchantResponse> result = await this.controller.PostPayment(payment);
 
-        OkObjectResult ok = Assert.IsType<OkObjectResult>(result.Result);
-        MerchantResponse response = Assert.IsType<MerchantResponse>(ok.Value);
+        CreatedAtActionResult created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        MerchantResponse response = Assert.IsType<MerchantResponse>(created.Value);
         Assert.True(Guid.TryParse(response.PaymentId, out _));
+        Assert.NotEqual("chosen-by-the-merchant", response.PaymentId);
         Assert.Equal(payment.PaymentId, response.PaymentId);
         Assert.Equal(PaymentStatus.Declined, response.PaymentStatus);
+        // the Location header points at GET api/payments/{paymentId}
+        Assert.Equal(nameof(PaymentController.GetPayment), created.ActionName);
+        Assert.NotNull(created.RouteValues);
+        Assert.Equal(response.PaymentId, created.RouteValues["paymentId"]);
     }
 
     [Fact]

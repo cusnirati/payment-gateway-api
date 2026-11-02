@@ -47,7 +47,7 @@ public class DependencyOutageTests : IClassFixture<OutageFixture>
 
         using HttpResponseMessage response = await api.PostAsJsonAsync("api/payments", TestPayments.Create(TestPayments.AuthorizedCard));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         JsonElement payment = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Unavailable", payment.GetProperty("paymentStatus").GetString());
     }

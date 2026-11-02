@@ -145,7 +145,7 @@ public class PaymentsRepositoryTests
     }
 
     [Fact]
-    public async Task Get_DynamoDbFails_LogsAndRethrows()
+    public async Task Get_DynamoDbFails_RethrowsWithoutLogging()
     {
         AmazonDynamoDBException exception = new("Unable to connect to the remote server");
         this.dynamo
@@ -155,6 +155,7 @@ public class PaymentsRepositoryTests
         AmazonDynamoDBException thrown = await Assert.ThrowsAsync<AmazonDynamoDBException>(() => this.repository.Get(this.payment.PaymentId!));
 
         Assert.Same(exception, thrown);
-        this.logger.VerifyLogged(LogLevel.Error, exception);
+        // ErrorHandler owns the error log for a failed read, a second one here would log it twice
+        this.logger.VerifyNoOtherCalls();
     }
 }

@@ -45,7 +45,7 @@ public class TraceContextTests
 
         using HttpResponseMessage response = await this.fixture.Api.SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal(traceId, TraceResponse.TraceIdOf(response));
         JsonElement payment = await response.Content.ReadFromJsonAsync<JsonElement>();
         BankSimulatorRequest bankRequest = Assert.Single(

@@ -52,7 +52,7 @@ public class CardDetailsValidatorTests
         ValidationError? error = this.validator.ValidateCardNumber(this.payment);
 
         Assert.NotNull(error);
-        Assert.Equal("cardNumber", error.Field);
+        Assert.Equal("CardNumber", error.Field);
         Assert.Equal("Card number must be a string of 14 to 19 ASCII digits.", error.ErrorMessage);
     }
 
@@ -66,7 +66,7 @@ public class CardDetailsValidatorTests
         ValidationError? error = this.validator.ValidateCardNumber(this.payment);
 
         Assert.NotNull(error);
-        Assert.Equal("cardNumber", error.Field);
+        Assert.Equal("CardNumber", error.Field);
         Assert.Equal("Card number failed the Luhn checksum.", error.ErrorMessage);
     }
 
@@ -97,28 +97,53 @@ public class CardDetailsValidatorTests
         ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
 
         Assert.NotNull(error);
-        Assert.Equal("expiry", error.Field);
+        Assert.Equal("ExpiryYear", error.Field);
         Assert.Equal($"Card expired. Expiry date '{expiry}' is before the current month.", error.ErrorMessage);
     }
 
     [Theory]
-    [InlineData(0, 2027, "00/2027")]
-    [InlineData(13, 2027, "13/2027")]
-    [InlineData(-1, 2027, "-01/2027")]
-    [InlineData(4, 27, "04/27")]
-    [InlineData(4, 10000, "04/10000")]
-    public void ValidateCardExpiry_InvalidMonthOrYear_ReturnsFormatError(int expiryMonth, int expiryYear, string expiry)
+    [InlineData(0)]
+    [InlineData(13)]
+    [InlineData(-1)]
+    public void ValidateCardExpiry_MonthNot1To12_ReturnsMonthError(int expiryMonth)
     {
         this.payment.ExpiryMonth = expiryMonth;
+        this.payment.ExpiryYear = 2027;
+
+        ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
+
+        Assert.NotNull(error);
+        Assert.Equal("ExpiryMonth", error.Field);
+        Assert.Equal($"Expiry month '{expiryMonth}' is not valid. Expiry month must be 1 to 12.", error.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(27)]
+    [InlineData(999)]
+    [InlineData(10000)]
+    public void ValidateCardExpiry_YearNotFourDigits_ReturnsYearError(int expiryYear)
+    {
+        this.payment.ExpiryMonth = 4;
         this.payment.ExpiryYear = expiryYear;
 
         ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
 
         Assert.NotNull(error);
-        Assert.Equal("expiry", error.Field);
-        Assert.Equal(
-            $"Expiry date '{expiry}' is not valid. Expiry month must be 1 to 12 and expiry year a four-digit year.",
-            error.ErrorMessage);
+        Assert.Equal("ExpiryYear", error.Field);
+        Assert.Equal($"Expiry year '{expiryYear}' is not valid. Expiry year must be a four-digit year.", error.ErrorMessage);
+    }
+
+    [Fact]
+    public void ValidateCardExpiry_MonthAndYearBothInvalid_ReturnsOnlyTheMonthError()
+    {
+        this.payment.ExpiryMonth = 13;
+        this.payment.ExpiryYear = 27;
+
+        ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
+
+        Assert.NotNull(error);
+        Assert.Equal("ExpiryMonth", error.Field);
     }
 
     [Fact]
@@ -143,6 +168,7 @@ public class CardDetailsValidatorTests
         ValidationError? error = this.validator.ValidateCardExpiry(this.payment);
 
         Assert.NotNull(error);
+        Assert.Equal("ExpiryYear", error.Field);
         Assert.Equal("Card expired. Expiry date '12/2026' is before the current month.", error.ErrorMessage);
     }
 
@@ -174,7 +200,7 @@ public class CardDetailsValidatorTests
         ValidationError? error = this.validator.ValidateCardCvv(this.payment);
 
         Assert.NotNull(error);
-        Assert.Equal("cvv", error.Field);
+        Assert.Equal("Cvv", error.Field);
         Assert.Equal("CVV must be a string of 3 or 4 ASCII digits.", error.ErrorMessage);
     }
 }

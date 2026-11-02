@@ -22,17 +22,17 @@ public class ValidationTests
     }
 
     [Theory]
-    [InlineData("cardNumber", "\"4111111111111112\"", "cardNumber")] // fails the Luhn checksum
-    [InlineData("cardNumber", "\"4111\"", "cardNumber")]
-    [InlineData("cardNumber", "\"4111-1111-1111-1111\"", "cardNumber")]
-    [InlineData("expiryMonth", "13", "expiry")]
-    [InlineData("expiryMonth", "0", "expiry")]
-    [InlineData("expiryYear", "27", "expiry")]
-    [InlineData("cvv", "\"12\"", "cvv")]
-    [InlineData("cvv", "\"12345\"", "cvv")]
-    [InlineData("amount", "0", "amount")]
-    [InlineData("amount", "-100", "amount")]
-    [InlineData("currency", "\"JPY\"", "currency")]
+    [InlineData("cardNumber", "\"4111111111111112\"", "CardNumber")] // fails the Luhn checksum
+    [InlineData("cardNumber", "\"4111\"", "CardNumber")]
+    [InlineData("cardNumber", "\"4111-1111-1111-1111\"", "CardNumber")]
+    [InlineData("expiryMonth", "13", "ExpiryMonth")]
+    [InlineData("expiryMonth", "0", "ExpiryMonth")]
+    [InlineData("expiryYear", "27", "ExpiryYear")]
+    [InlineData("cvv", "\"12\"", "Cvv")]
+    [InlineData("cvv", "\"12345\"", "Cvv")]
+    [InlineData("amount", "0", "Amount")]
+    [InlineData("amount", "-100", "Amount")]
+    [InlineData("currency", "\"JPY\"", "Currency")]
     public async Task PostPayment_OneInvalidField_Returns400WithOnlyThatError(string property, string json, string error)
     {
         JsonObject request = TestPayments.Create(TestPayments.AuthorizedCard);
@@ -54,7 +54,7 @@ public class ValidationTests
 
         ValidationProblemDetails problem = await this.PostInvalidPayment(request);
 
-        Assert.Equal(new[] { "expiry" }, problem.Errors.Keys);
+        Assert.Equal(new[] { "ExpiryYear" }, problem.Errors.Keys);
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class ValidationTests
 
         ValidationProblemDetails problem = await this.PostInvalidPayment(request);
 
-        Assert.Equal(new[] { "amount", "cardNumber", "currency", "cvv", "expiry" }, problem.Errors.Keys.Order());
+        Assert.Equal(new[] { "Amount", "CardNumber", "Currency", "Cvv", "ExpiryMonth" }, problem.Errors.Keys.Order());
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class ValidationTests
         using HttpResponseMessage accepted = await this.fixture.Api.PostAsJsonAsync("api/payments", valid);
 
         Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
         Assert.Empty(await this.fixture.FindBankRequests("$.amount", invalidAmount.ToString(CultureInfo.InvariantCulture)));
         // the valid one proves the search finds a payment by its amount
         Assert.Single(await this.fixture.FindBankRequests("$.amount", validAmount.ToString(CultureInfo.InvariantCulture)));

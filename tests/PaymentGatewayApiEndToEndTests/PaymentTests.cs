@@ -32,10 +32,11 @@ public class PaymentTests
     {
         using HttpResponseMessage post = await this.fixture.Api.PostAsJsonAsync("api/payments", TestPayments.Create(cardNumber));
 
-        Assert.Equal(HttpStatusCode.OK, post.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, post.StatusCode);
         JsonElement created = await post.Content.ReadFromJsonAsync<JsonElement>();
         string paymentId = created.GetProperty("paymentId").GetString()!;
         Assert.True(Guid.TryParse(paymentId, out _));
+        Assert.Equal($"/api/payments/{paymentId}", post.Headers.Location?.AbsolutePath);
         Assert.Equal(status, created.GetProperty("paymentStatus").GetString());
 
         using HttpResponseMessage get = await this.fixture.Api.GetAsync($"api/payments/{paymentId}");
@@ -142,7 +143,7 @@ public class PaymentTests
 
         using HttpResponseMessage response = await this.fixture.Api.PostAsync("api/payments", new StringContent(body, Encoding.UTF8, "application/json"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         JsonElement payment = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Authorized", payment.GetProperty("paymentStatus").GetString());
     }
@@ -163,7 +164,7 @@ public class PaymentTests
     private async Task<string> PostPayment(JsonObject request)
     {
         using HttpResponseMessage response = await this.fixture.Api.PostAsJsonAsync("api/payments", request);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         JsonElement payment = await response.Content.ReadFromJsonAsync<JsonElement>();
         return payment.GetProperty("paymentId").GetString()!;
     }
