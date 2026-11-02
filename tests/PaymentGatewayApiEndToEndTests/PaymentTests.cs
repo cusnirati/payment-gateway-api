@@ -30,7 +30,7 @@ public class PaymentTests
     [InlineData(TestPayments.UnavailableCard, "Unavailable")]
     public async Task PostPayment_ReturnsTheBankOutcome_AndGetPaymentReturnsTheSame(string cardNumber, string status)
     {
-        using HttpResponseMessage post = await this.fixture.Api.PostAsJsonAsync("api/payment", TestPayments.Create(cardNumber));
+        using HttpResponseMessage post = await this.fixture.Api.PostAsJsonAsync("api/payments", TestPayments.Create(cardNumber));
 
         Assert.Equal(HttpStatusCode.OK, post.StatusCode);
         JsonElement created = await post.Content.ReadFromJsonAsync<JsonElement>();
@@ -38,7 +38,7 @@ public class PaymentTests
         Assert.True(Guid.TryParse(paymentId, out _));
         Assert.Equal(status, created.GetProperty("paymentStatus").GetString());
 
-        using HttpResponseMessage get = await this.fixture.Api.GetAsync($"api/payment/{paymentId}");
+        using HttpResponseMessage get = await this.fixture.Api.GetAsync($"api/payments/{paymentId}");
 
         Assert.Equal(HttpStatusCode.OK, get.StatusCode);
         JsonElement retrieved = await get.Content.ReadFromJsonAsync<JsonElement>();
@@ -140,7 +140,7 @@ public class PaymentTests
             }
             """;
 
-        using HttpResponseMessage response = await this.fixture.Api.PostAsync("api/payment", new StringContent(body, Encoding.UTF8, "application/json"));
+        using HttpResponseMessage response = await this.fixture.Api.PostAsync("api/payments", new StringContent(body, Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         JsonElement payment = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -152,7 +152,7 @@ public class PaymentTests
     {
         Guid paymentId = Guid.NewGuid();
 
-        using HttpResponseMessage response = await this.fixture.Api.GetAsync($"api/payment/{paymentId}");
+        using HttpResponseMessage response = await this.fixture.Api.GetAsync($"api/payments/{paymentId}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         ProblemDetails? problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
@@ -162,7 +162,7 @@ public class PaymentTests
 
     private async Task<string> PostPayment(JsonObject request)
     {
-        using HttpResponseMessage response = await this.fixture.Api.PostAsJsonAsync("api/payment", request);
+        using HttpResponseMessage response = await this.fixture.Api.PostAsJsonAsync("api/payments", request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         JsonElement payment = await response.Content.ReadFromJsonAsync<JsonElement>();
         return payment.GetProperty("paymentId").GetString()!;

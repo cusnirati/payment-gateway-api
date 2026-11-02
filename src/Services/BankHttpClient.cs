@@ -1,9 +1,7 @@
 using System;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.ResponseCaching;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models.Requests;
 using PaymentGatewayApi.Models.Responses;
@@ -47,6 +45,13 @@ public class BankHttpClient : IBankHttpClient
             httpResponse.EnsureSuccessStatusCode();
 
             BankResponse? bankResponse = await httpResponse.Content.ReadFromJsonAsync<BankResponse>();
+            if (bankResponse is null)
+            {
+                this.logger.LogError(
+                    "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Reason={Reason}",
+                    payment.PaymentId, "PostBankPayment", "Failed", "NullResponse");
+            }
+
             return bankResponse;
         }
         catch (Exception exception)

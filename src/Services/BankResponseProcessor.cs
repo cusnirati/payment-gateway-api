@@ -1,6 +1,3 @@
-using System;
-using System.Net.Http;
-using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Models.Requests;
@@ -34,19 +31,18 @@ public class BankResponseProcessor : IBankResponseProcessor
         paymentDb.Amount = paymentRequest.Amount;
         paymentDb.Currency = paymentRequest.Currency;
 
-        // the bank could not be reached or failed even after the retry
+        // BankHttpClient owns the error log for a failed bank call, so no second Error here
         if (bankResponse is null)
         {
-            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", paymentRequest.PaymentId, "ParseBankResponse", "NullResponse", "Failed");
-
             paymentDb.Status = PaymentStatus.Unavailable;
             return paymentDb;
         }
 
-        // authorized without an authorization code breaks the bank's contract: the outcome is unknown, not a decline
         if (bankResponse.Authorized && string.IsNullOrWhiteSpace(bankResponse.AuthorizationCode))
         {
-            this.logger.LogError("PaymentId={PaymentId}, Operation={Operation}, Reason={Reason}, Status={Status}", paymentRequest.PaymentId, "ParseBankResponse", "AuthorizedWithoutAuthorizationCode", "Failed");
+            this.logger.LogError(
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Reason={Reason},",
+                paymentRequest.PaymentId, "ParseBankResponse", "Failed", "MissingAuthorizationCode");
 
             paymentDb.Status = PaymentStatus.Unavailable;
             return paymentDb;
@@ -64,7 +60,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         }
 
         this.logger.LogInformation(
-            "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Authorized={Authorized}",
+            "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, PaymentStatus={PaymentStatus}",
             paymentDb.PaymentId, "ParseBankResponse", "Completed", paymentDb.Status);
 
         return paymentDb;

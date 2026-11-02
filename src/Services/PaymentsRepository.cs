@@ -34,29 +34,22 @@ public class PaymentsRepository : IPaymentsRepository
 
     public async Task<PaymentDb?> Get(string paymentId)
     {
-        try
+        // no catch: a failure goes up to ErrorHandler, which owns the error log (correlated to the PaymentId by TraceId)
+        var dynamoKey = new Dictionary<string, AttributeValue>
         {
-            var dynamoKey = new Dictionary<string, AttributeValue>
-            {
-                ["PaymentId"] = new AttributeValue { S = paymentId }
-            };
+            ["PaymentId"] = new AttributeValue { S = paymentId }
+        };
 
-            GetItemResponse response = await this.dynamo.GetItemAsync(PaymentsTable, dynamoKey);
+        GetItemResponse response = await this.dynamo.GetItemAsync(PaymentsTable, dynamoKey);
 
-            PaymentDb? payment = null;
-            if (response.Item != null && response.Item.Any())
-            {
-                string raw = response.Item["PaymentRaw"].S;
-                payment = JsonSerializer.Deserialize<PaymentDb>(raw);
-            }
-
-            return payment;
-        }
-        catch (Exception exception)
+        PaymentDb? payment = null;
+        if (response.Item != null && response.Item.Any())
         {
-            this.logger.LogError(exception, "PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Failed");
-            throw;
+            string raw = response.Item["PaymentRaw"].S;
+            payment = JsonSerializer.Deserialize<PaymentDb>(raw);
         }
+
+        return payment;
     }
 
     public async Task Put(PaymentDb payment)

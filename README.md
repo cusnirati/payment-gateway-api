@@ -39,7 +39,7 @@ To send a payment, use postman / bruno and the collection in ```tests/bruno-coll
 or send directly via curl
 ```bash
 curl --request POST \
-  --url http://localhost:5067/api/payment \
+  --url http://localhost:5067/api/payments \
   --header 'CallerId: bruno-client' \
   --header 'Content-Type: application/json' \
   --data '{

@@ -1,6 +1,6 @@
 using System;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Models.Requests;
 
@@ -15,12 +15,12 @@ public interface IPaymentDetailsValidator
 public class PaymentDetailsValidator : IPaymentDetailsValidator
 {
     private readonly ILogger<PaymentDetailsValidator> logger;
-    private readonly IConfiguration config;
+    private readonly GatewayOptions options;
 
-    public PaymentDetailsValidator(ILogger<PaymentDetailsValidator> logger, IConfiguration config)
+    public PaymentDetailsValidator(ILogger<PaymentDetailsValidator> logger, IOptions<GatewayOptions> options)
     {
         this.logger = logger;
-        this.config = config;
+        this.options = options.Value;
     }
 
     public ValidationError? ValidateAmount(PaymentRequest payment)
@@ -33,7 +33,7 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
 
             return new ValidationError
             {
-                Field = "amount",
+                Field = nameof(PaymentRequest.Amount),
                 ErrorMessage = "Amount must be a whole number of minor currency units, at least 1."
             };
         }
@@ -43,8 +43,7 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
 
     public ValidationError? ValidateCurrencyCode(PaymentRequest payment)
     {
-        string[] supportedCurrencies = this.config.GetSection("SupportedCurrencies").Get<string[]>() ?? [];
-        if (!supportedCurrencies.Contains(payment.Currency, StringComparer.OrdinalIgnoreCase))
+        if (!this.options.SupportedCurrencies.Contains(payment.Currency))
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
@@ -52,8 +51,8 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
 
             return new ValidationError
             {
-                Field = "currency",
-                ErrorMessage = $"Currency '{payment.Currency}' is not supported. Supported currencies: {string.Join(", ", supportedCurrencies)}."
+                Field = nameof(PaymentRequest.Currency),
+                ErrorMessage = $"Currency '{payment.Currency}' is not supported"
             };
         }
 

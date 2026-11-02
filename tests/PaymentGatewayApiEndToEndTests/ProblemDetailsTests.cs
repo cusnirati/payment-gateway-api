@@ -18,13 +18,13 @@ public class ProblemDetailsTests
     }
 
     [Theory]
-    [InlineData("GET", "/api/payment/6f1c0a39-5f4e-4b8e-9d0c-2b7f4a1e8c3d", null, null, 404)] // payment not found
-    [InlineData("GET", "/api/payment/not-a-guid", null, null, 404)] // no route matches
+    [InlineData("GET", "/api/payments/6f1c0a39-5f4e-4b8e-9d0c-2b7f4a1e8c3d", null, null, 404)] // payment not found
+    [InlineData("GET", "/api/payments/not-a-guid", null, null, 404)] // no route matches
     [InlineData("GET", "/api/unknown", null, null, 404)]
-    [InlineData("DELETE", "/api/payment", null, null, 405)]
-    [InlineData("POST", "/api/payment", "application/json", """{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": "JPY", "cvv": "123" }""", 400)]
-    [InlineData("POST", "/api/payment", "application/json", "{}", 400)] // fails model binding
-    [InlineData("POST", "/api/payment", "text/plain", "payment", 415)]
+    [InlineData("DELETE", "/api/payments", null, null, 405)]
+    [InlineData("POST", "/api/payments", "application/json", """{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": "JPY", "cvv": "123" }""", 400)]
+    [InlineData("POST", "/api/payments", "application/json", "{}", 400)] // fails model binding
+    [InlineData("POST", "/api/payments", "text/plain", "payment", 415)]
     public async Task ErrorResponse_IsAProblemDetailsBodyWithInstanceAndTraceId(string method, string path, string? contentType, string? body, int status)
     {
         using HttpRequestMessage request = new(new HttpMethod(method), path);

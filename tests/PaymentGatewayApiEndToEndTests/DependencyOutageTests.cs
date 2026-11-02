@@ -45,7 +45,7 @@ public class DependencyOutageTests : IClassFixture<OutageFixture>
     {
         using HttpClient api = this.fixture.CreateClient();
 
-        using HttpResponseMessage response = await api.PostAsJsonAsync("api/payment", TestPayments.Create(TestPayments.AuthorizedCard));
+        using HttpResponseMessage response = await api.PostAsJsonAsync("api/payments", TestPayments.Create(TestPayments.AuthorizedCard));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         JsonElement payment = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -56,7 +56,7 @@ public class DependencyOutageTests : IClassFixture<OutageFixture>
     public async Task GetPayment_Returns500ProblemWithoutTheExceptionDetails()
     {
         using HttpClient api = this.fixture.CreateClient();
-        string path = $"/api/payment/{Guid.NewGuid()}";
+        string path = $"/api/payments/{Guid.NewGuid()}";
 
         using HttpResponseMessage response = await api.GetAsync(path);
 

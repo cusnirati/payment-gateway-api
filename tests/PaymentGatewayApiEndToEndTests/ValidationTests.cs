@@ -87,8 +87,8 @@ public class ValidationTests
         JsonObject valid = TestPayments.Create(TestPayments.AuthorizedCard);
         valid["amount"] = validAmount;
 
-        using HttpResponseMessage rejected = await this.fixture.Api.PostAsJsonAsync("api/payment", invalid);
-        using HttpResponseMessage accepted = await this.fixture.Api.PostAsJsonAsync("api/payment", valid);
+        using HttpResponseMessage rejected = await this.fixture.Api.PostAsJsonAsync("api/payments", invalid);
+        using HttpResponseMessage accepted = await this.fixture.Api.PostAsJsonAsync("api/payments", valid);
 
         Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
         Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
@@ -104,7 +104,7 @@ public class ValidationTests
     [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": "abc", "currency": "GBP", "cvv": "123" }""")]
     public async Task PostPayment_UnreadableBody_Returns400Problem(string body)
     {
-        using HttpResponseMessage response = await this.fixture.Api.PostAsync("api/payment", new StringContent(body, Encoding.UTF8, "application/json"));
+        using HttpResponseMessage response = await this.fixture.Api.PostAsync("api/payments", new StringContent(body, Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -117,7 +117,7 @@ public class ValidationTests
     public async Task PostPayment_NotJson_Returns415Problem()
     {
         using HttpResponseMessage response = await this.fixture.Api.PostAsync(
-            "api/payment", new StringContent($"cardNumber={TestPayments.AuthorizedCard}", Encoding.UTF8, "text/plain"));
+            "api/payments", new StringContent($"cardNumber={TestPayments.AuthorizedCard}", Encoding.UTF8, "text/plain"));
 
         Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -125,7 +125,7 @@ public class ValidationTests
 
     private async Task<ValidationProblemDetails> PostInvalidPayment(JsonObject request)
     {
-        using HttpResponseMessage response = await this.fixture.Api.PostAsJsonAsync("api/payment", request);
+        using HttpResponseMessage response = await this.fixture.Api.PostAsJsonAsync("api/payments", request);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         ValidationProblemDetails? problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();

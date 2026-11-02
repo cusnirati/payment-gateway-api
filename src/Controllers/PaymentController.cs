@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -15,7 +12,7 @@ using PaymentGatewayApi.Services.Validators;
 
 namespace PaymentGatewayApi.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/payments")]
 [ApiController]
 public class PaymentController : ControllerBase
 {
@@ -34,6 +31,9 @@ public class PaymentController : ControllerBase
     }
 
     [HttpGet("{paymentId:guid}")]
+    [ProducesResponseType<MerchantResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public async Task<ActionResult<MerchantResponse>> GetPayment(Guid paymentId)
     {
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Started");
@@ -50,6 +50,9 @@ public class PaymentController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType<MerchantResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public async Task<ActionResult<MerchantResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
         // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference
@@ -61,7 +64,7 @@ public class PaymentController : ControllerBase
         MerchantResponse merchantResponse = new() { PaymentId = payment.PaymentId };
 
         List<ValidationError> validationErrors = this.validator.ValidatePayment(payment);
-        if (validationErrors.Any())
+        if (validationErrors.Count > 0)
         {
             foreach (ValidationError validationError in validationErrors)
             {
@@ -74,7 +77,7 @@ public class PaymentController : ControllerBase
         PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
         merchantResponse.PaymentStatus = paymentResponse.Status;
 
-        return new OkObjectResult(merchantResponse);
+        return this.CreatedAtAction(nameof(this.GetPayment), new { paymentId = payment.PaymentId }, merchantResponse);
     }
 }
 
