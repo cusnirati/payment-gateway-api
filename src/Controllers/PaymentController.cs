@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -65,7 +64,7 @@ public class PaymentController : ControllerBase
         MerchantResponse merchantResponse = new() { PaymentId = payment.PaymentId };
 
         List<ValidationError> validationErrors = this.validator.ValidatePayment(payment);
-        if (validationErrors.Any())
+        if (validationErrors.Count > 0)
         {
             foreach (ValidationError validationError in validationErrors)
             {
