@@ -34,12 +34,9 @@ public class BankResponseProcessor : IBankResponseProcessor
         paymentDb.Amount = paymentRequest.Amount;
         paymentDb.Currency = paymentRequest.Currency;
 
+        // BankHttpClient owns the error log for a failed bank call, so no second Error here
         if (bankResponse is null)
         {
-            this.logger.LogError(
-                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Reason={Reason},",
-                paymentRequest.PaymentId, "ParseBankResponse", "Failed", "NullResponse");
-
             paymentDb.Status = PaymentStatus.Unavailable;
             return paymentDb;
         }

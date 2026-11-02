@@ -47,6 +47,13 @@ public class BankHttpClient : IBankHttpClient
             httpResponse.EnsureSuccessStatusCode();
 
             BankResponse? bankResponse = await httpResponse.Content.ReadFromJsonAsync<BankResponse>();
+            if (bankResponse is null)
+            {
+                this.logger.LogError(
+                    "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Reason={Reason}",
+                    payment.PaymentId, "PostBankPayment", "Failed", "NullResponse");
+            }
+
             return bankResponse;
         }
         catch (Exception exception)
