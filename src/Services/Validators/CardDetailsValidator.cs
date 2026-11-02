@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
@@ -40,7 +39,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
             return new ValidationError
             {
-                Field = "cardNumber",
+                Field = nameof(PaymentRequest.CardNumber),
                 ErrorMessage = "Card number must be a string of 14 to 19 ASCII digits."
             };
         }
@@ -73,7 +72,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
             return new ValidationError
             {
-                Field = "cardNumber",
+                Field = nameof(PaymentRequest.CardNumber),
                 ErrorMessage = "Card number failed the Luhn checksum."
             };
         }
@@ -83,21 +82,34 @@ public class CardDetailsValidator : ICardDetailsValidator
 
     public ValidationError? ValidateCardExpiry(PaymentRequest payment)
     {
-        string expiryStr = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}";
-        if (!DateTime.TryParseExact(expiryStr, "MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime expiryDt))
+        if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
         {
             this.logger.LogInformation(
                 "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsExpiryDateFormatValid", false);
+                payment.PaymentId, "Validator.IsExpiryMonthValid", false);
 
             return new ValidationError
             {
-                Field = "expiry",
-                ErrorMessage = $"Expiry date '{expiryStr}' is not valid. Expiry month must be 1 to 12 and expiry year a four-digit year."
+                Field = nameof(PaymentRequest.ExpiryMonth),
+                ErrorMessage = $"Expiry month '{payment.ExpiryMonth}' is not valid. Expiry month must be 1 to 12."
             };
         }
 
-        DateOnly expiry = new(expiryDt.Year, expiryDt.Month, 1);
+        if (payment.ExpiryYear < 1000 || payment.ExpiryYear > 9999)
+        {
+            this.logger.LogInformation(
+                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
+                payment.PaymentId, "Validator.IsExpiryYearValid", false);
+
+            return new ValidationError
+            {
+                Field = nameof(PaymentRequest.ExpiryYear),
+                ErrorMessage = $"Expiry year '{payment.ExpiryYear}' is not valid. Expiry year must be a four-digit year."
+            };
+        }
+
+        string expiryStr = $"{payment.ExpiryMonth:D2}/{payment.ExpiryYear}";
+        DateOnly expiry = new(payment.ExpiryYear, payment.ExpiryMonth, 1);
         DateTimeOffset nowDt = this.timeProvider.GetUtcNow();
         DateOnly now = new(nowDt.Year, nowDt.Month, 1);
 
@@ -109,7 +121,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
             return new ValidationError
             {
-                Field = "expiry",
+                Field = nameof(PaymentRequest.ExpiryYear),
                 ErrorMessage = $"Card expired. Expiry date '{expiryStr}' is before the current month."
             };
         }
@@ -127,7 +139,7 @@ public class CardDetailsValidator : ICardDetailsValidator
 
             return new ValidationError
             {
-                Field = "cvv",
+                Field = nameof(PaymentRequest.Cvv),
                 ErrorMessage = "CVV must be a string of 3 or 4 ASCII digits."
             };
         }

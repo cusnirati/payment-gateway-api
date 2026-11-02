@@ -33,7 +33,7 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
 
             return new ValidationError
             {
-                Field = "amount",
+                Field = nameof(PaymentRequest.Amount),
                 ErrorMessage = "Amount must be a whole number of minor currency units, at least 1."
             };
         }
@@ -51,7 +51,7 @@ public class PaymentDetailsValidator : IPaymentDetailsValidator
 
             return new ValidationError
             {
-                Field = "currency",
+                Field = nameof(PaymentRequest.Currency),
                 ErrorMessage = $"Currency '{payment.Currency}' is not supported"
             };
         }
