@@ -1,6 +1,3 @@
-using System;
-using System.Net.Http;
-using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Models.Requests;
