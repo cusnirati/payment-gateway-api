@@ -36,7 +36,6 @@ try
         .ReadFrom.Services(sp));
 
     // W3C trace context is our correlation id: an incoming traceparent is continued, otherwise a new trace starts,
-    // and HttpClient forwards it to the bank. No exporter, the ids end up in the Serilog sinks
     builder.Services.AddOpenTelemetry()
         .ConfigureResource(resource => resource.AddService("payment-gateway-api"))
         .WithTracing(tracing => tracing
@@ -50,27 +49,24 @@ try
     });
 
     // every error response is an RFC 9457 problem details body (application/problem+json):
-    // validation failures, not found, unhandled exceptions (ErrorHandler) and bodiless status codes (UseStatusCodePages)
     builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     {
         context.ProblemDetails.Instance = context.HttpContext.Request.Path;
-        // same 32-hex value as TraceId in the logs, so the caller can hand it over for a lookup
         context.ProblemDetails.Extensions["traceId"] = Activity.Current?.TraceId.ToString();
     });
     builder.Services.AddExceptionHandler<ErrorHandler>();
 
-    // validated when the host starts, so a bad bank address stops the service at boot instead of failing every request
-    builder.Services.AddOptions<BankOptions>()
+    builder.Services.AddOptions<GatewayOptions>()
         .Bind(builder.Configuration)
         .ValidateOnStart();
-    builder.Services.AddSingleton<IValidateOptions<BankOptions>, BankOptionsValidator>();
+    builder.Services.AddSingleton<IValidateOptions<GatewayOptions>, GatewayOptionsValidator>();
 
     // demo setup: the bank call is retried once (2 attempts total) without backoff, only on transient failures
     // (network error, per-attempt timeout, 408, 429, 5xx); ideally fine-tuned with backoff and a circuit breaker
     // HttpClient.Timeout caps the whole call including the retry, so it covers 2 attempts of 10s
     builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>((serviceProvider, client) =>
         {
-            client.BaseAddress = new Uri(serviceProvider.GetRequiredService<IOptions<BankOptions>>().Value.BaseAddress);
+            client.BaseAddress = new Uri(serviceProvider.GetRequiredService<IOptions<GatewayOptions>>().Value.BankBaseAddress);
             client.Timeout = TimeSpan.FromSeconds(25);
         })
         .AddResilienceHandler("bank", pipeline => pipeline
