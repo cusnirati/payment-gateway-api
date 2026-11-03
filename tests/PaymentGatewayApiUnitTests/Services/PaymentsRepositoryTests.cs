@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -43,15 +44,17 @@ public class PaymentsRepositoryTests
     [Fact]
     public async Task Put_WritesThePaymentWithItsIdAndCreationTimeToThePaymentsTable()
     {
-        Dictionary<string, AttributeValue>? item = null;
+        PutItemRequest? request = null;
         this.dynamo
-            .Setup(d => d.PutItemAsync("Payments", It.IsAny<Dictionary<string, AttributeValue>>(), It.IsAny<CancellationToken>()))
-            .Callback<string, Dictionary<string, AttributeValue>, CancellationToken>((_, written, _) => item = written)
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<PutItemRequest, CancellationToken>((written, _) => request = written)
             .ReturnsAsync(new PutItemResponse());
 
         await this.repository.Put(this.payment);
 
-        Assert.NotNull(item);
+        Assert.NotNull(request);
+        Assert.Equal("Payments", request.TableName);
+        Dictionary<string, AttributeValue> item = request.Item;
         Assert.Equal(new[] { "CreatedAt", "PaymentId", "PaymentRaw" }, item.Keys.Order());
         Assert.Equal(this.payment.PaymentId, item["PaymentId"].S);
         Assert.Equal("2026-10-22T09:30:15.0000000Z", item["CreatedAt"].S);
@@ -60,11 +63,40 @@ public class PaymentsRepositoryTests
     }
 
     [Fact]
+    public async Task Put_OnlyWritesWhenNoPaymentWithTheSameIdExists()
+    {
+        PutItemRequest? request = null;
+        this.dynamo
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<PutItemRequest, CancellationToken>((written, _) => request = written)
+            .ReturnsAsync(new PutItemResponse());
+
+        await this.repository.Put(this.payment);
+
+        Assert.NotNull(request);
+        Assert.Equal("attribute_not_exists(PaymentId)", request.ConditionExpression);
+    }
+
+    [Fact]
+    public async Task Put_PaymentAlreadyExists_LogsTheErrorWithoutThrowing()
+    {
+        ConditionalCheckFailedException exception = new("The conditional request failed");
+        this.dynamo
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(exception);
+
+        Exception? thrown = await Record.ExceptionAsync(() => this.repository.Put(this.payment));
+
+        Assert.Null(thrown);
+        this.logger.VerifyLogged(LogLevel.Error, exception);
+    }
+
+    [Fact]
     public async Task Put_DynamoDbFails_LogsTheErrorWithoutThrowing()
     {
         AmazonDynamoDBException exception = new("Throughput exceeds the current capacity");
         this.dynamo
-            .Setup(d => d.PutItemAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, AttributeValue>>(), It.IsAny<CancellationToken>()))
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
 
         Exception? thrown = await Record.ExceptionAsync(() => this.repository.Put(this.payment));
@@ -107,8 +139,8 @@ public class PaymentsRepositoryTests
     {
         Dictionary<string, AttributeValue>? item = null;
         this.dynamo
-            .Setup(d => d.PutItemAsync("Payments", It.IsAny<Dictionary<string, AttributeValue>>(), It.IsAny<CancellationToken>()))
-            .Callback<string, Dictionary<string, AttributeValue>, CancellationToken>((_, written, _) => item = written)
+            .Setup(d => d.PutItemAsync(It.Is<PutItemRequest>(r => r.TableName == "Payments"), It.IsAny<CancellationToken>()))
+            .Callback<PutItemRequest, CancellationToken>((written, _) => item = written.Item)
             .ReturnsAsync(new PutItemResponse());
         this.dynamo
             .Setup(d => d.GetItemAsync("Payments", It.IsAny<Dictionary<string, AttributeValue>>(), It.IsAny<CancellationToken>()))
@@ -145,6 +177,63 @@ public class PaymentsRepositoryTests
     }
 
     [Fact]
+    public async Task Get_ItemWithoutPaymentRaw_ThrowsInvalidData()
+    {
+        this.SetupStoredItem(new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = this.payment.PaymentId },
+            ["CreatedAt"] = new AttributeValue { S = "2026-10-22T09:30:15.0000000Z" }
+        });
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => this.repository.Get(this.payment.PaymentId!));
+    }
+
+    [Fact]
+    public async Task Get_PaymentRawIsNotAString_ThrowsInvalidData()
+    {
+        this.SetupStoredItem(new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = this.payment.PaymentId },
+            ["PaymentRaw"] = new AttributeValue { N = "100" }
+        });
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => this.repository.Get(this.payment.PaymentId!));
+    }
+
+    [Theory]
+    // JSON null
+    [InlineData("null")]
+    // a different payment's PaymentRaw
+    [InlineData("""{"PaymentId":"6f1c0a39-5f4e-4b8e-9d0c-2b7f4a1e8c3d","Status":"Authorized"}""")]
+    // no PaymentId
+    [InlineData("""{"Status":"Authorized"}""")]
+    // no Status, deserializes to Unknown
+    [InlineData("""{"PaymentId":"1bfb4527-35b5-4a0c-84d1-c3227fd63b5d"}""")]
+    [InlineData("""{"PaymentId":"1bfb4527-35b5-4a0c-84d1-c3227fd63b5d","Status":"Unknown"}""")]
+    public async Task Get_InvalidPaymentRaw_ThrowsInvalidData(string raw)
+    {
+        this.SetupStoredItem(new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = this.payment.PaymentId },
+            ["PaymentRaw"] = new AttributeValue { S = raw }
+        });
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => this.repository.Get(this.payment.PaymentId!));
+    }
+
+    [Fact]
+    public async Task Get_MalformedPaymentRaw_Throws()
+    {
+        this.SetupStoredItem(new Dictionary<string, AttributeValue>
+        {
+            ["PaymentId"] = new AttributeValue { S = this.payment.PaymentId },
+            ["PaymentRaw"] = new AttributeValue { S = """{"PaymentId":"1bfb4527""" }
+        });
+
+        await Assert.ThrowsAsync<JsonException>(() => this.repository.Get(this.payment.PaymentId!));
+    }
+
+    [Fact]
     public async Task Get_DynamoDbFails_RethrowsWithoutLogging()
     {
         AmazonDynamoDBException exception = new("Unable to connect to the remote server");
@@ -157,5 +246,12 @@ public class PaymentsRepositoryTests
         Assert.Same(exception, thrown);
         // ErrorHandler owns the error log for a failed read, a second one here would log it twice
         this.logger.VerifyNoOtherCalls();
+    }
+
+    private void SetupStoredItem(Dictionary<string, AttributeValue> item)
+    {
+        this.dynamo
+            .Setup(d => d.GetItemAsync("Payments", It.IsAny<Dictionary<string, AttributeValue>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetItemResponse { Item = item });
     }
 }
