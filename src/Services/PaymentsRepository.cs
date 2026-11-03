@@ -73,7 +73,22 @@ public class PaymentsRepository : IPaymentsRepository
                 ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
             };
 
-            await this.dynamo.PutItemAsync(PaymentsTable, item);
+            var request = new PutItemRequest
+            {
+                TableName = PaymentsTable,
+                Item = item,
+                // a payment is written once; never silently overwrite an existing one (idempotency relies on this)
+                ConditionExpression = "attribute_not_exists(PaymentId)"
+            };
+
+            await this.dynamo.PutItemAsync(request);
+        }
+        catch (ConditionalCheckFailedException exception)
+        {
+            this.logger.LogError(
+                exception,
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "PutPayment", "AlreadyExists");
         }
         catch (Exception exception)
         {
