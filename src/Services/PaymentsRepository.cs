@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
@@ -42,11 +42,21 @@ public class PaymentsRepository : IPaymentsRepository
 
         GetItemResponse response = await this.dynamo.GetItemAsync(PaymentsTable, dynamoKey);
 
-        PaymentDb? payment = null;
-        if (response.Item != null && response.Item.Any())
+        // only a missing item is "not found"; an item we can't read is corrupt data and must surface as a 500
+        if (response.Item == null || response.Item.Count == 0)
         {
-            string raw = response.Item["PaymentRaw"].S;
-            payment = JsonSerializer.Deserialize<PaymentDb>(raw);
+            return null;
+        }
+
+        if (!response.Item.TryGetValue("PaymentRaw", out AttributeValue? rawAttribute) || rawAttribute.S == null)
+        {
+            throw new InvalidDataException($"Payment '{paymentId}' has no PaymentRaw string attribute.");
+        }
+
+        PaymentDb? payment = JsonSerializer.Deserialize<PaymentDb>(rawAttribute.S);
+        if (payment == null || payment.PaymentId != paymentId || payment.Status == PaymentStatus.Unknown)
+        {
+            throw new InvalidDataException($"Payment '{paymentId}' has an invalid PaymentRaw.");
         }
 
         return payment;
@@ -63,7 +73,22 @@ public class PaymentsRepository : IPaymentsRepository
                 ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
             };
 
-            await this.dynamo.PutItemAsync(PaymentsTable, item);
+            var request = new PutItemRequest
+            {
+                TableName = PaymentsTable,
+                Item = item,
+                // a payment is written once; never silently overwrite an existing one (idempotency relies on this)
+                ConditionExpression = "attribute_not_exists(PaymentId)"
+            };
+
+            await this.dynamo.PutItemAsync(request);
+        }
+        catch (ConditionalCheckFailedException exception)
+        {
+            this.logger.LogError(
+                exception,
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "PutPayment", "AlreadyExists");
         }
         catch (Exception exception)
         {
