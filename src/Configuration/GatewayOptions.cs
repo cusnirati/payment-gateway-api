@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace PaymentGatewayApi.Services;
+namespace PaymentGatewayApi.Configuration;
 
 // represents IOptions<GatewayOptions>, being validated at startup
 public class GatewayOptions

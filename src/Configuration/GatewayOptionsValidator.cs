@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Options;
 
-namespace PaymentGatewayApi.Services;
+namespace PaymentGatewayApi.Configuration;
 
 public class GatewayOptionsValidator : IValidateOptions<GatewayOptions>
 {

@@ -13,6 +13,7 @@ using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using PaymentGatewayApi.Configuration;
 using PaymentGatewayApi.Middleware;
 using PaymentGatewayApi.Services;
 using PaymentGatewayApi.Services.Validators;
@@ -21,6 +22,7 @@ using Serilog;
 using Serilog.Formatting.Compact;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console(new CompactJsonFormatter()).CreateBootstrapLogger();
+
 try
 {
     var builder = WebApplication.CreateBuilder(args);
@@ -35,7 +37,6 @@ try
         .ReadFrom.Configuration(sp.GetRequiredService<IConfiguration>())
         .ReadFrom.Services(sp));
 
-    // W3C trace context is our correlation id: an incoming traceparent is continued, otherwise a new trace starts,
     builder.Services.AddOpenTelemetry()
         .ConfigureResource(resource => resource.AddService("payment-gateway-api"))
         .WithTracing(tracing => tracing
@@ -62,8 +63,8 @@ try
     builder.Services.AddSingleton<IValidateOptions<GatewayOptions>, GatewayOptionsValidator>();
 
     // demo setup: the bank call is retried once (2 attempts total) without backoff, only on transient failures
-    // (network error, per-attempt timeout, 408, 429, 5xx); ideally fine-tuned with backoff and a circuit breaker
-    // HttpClient.Timeout caps the whole call including the retry, so it covers 2 attempts of 10s
+    // (network error, per-attempt timeout, 408, 429, 5xx)
+    // ideally fine-tuned with backoff and a circuit breaker
     builder.Services.AddHttpClient<IBankHttpClient, BankHttpClient>((serviceProvider, client) =>
         {
             client.BaseAddress = new Uri(serviceProvider.GetRequiredService<IOptions<GatewayOptions>>().Value.BankBaseAddress);
@@ -113,7 +114,7 @@ try
 catch (Exception exception) when (exception is not HostAbortedException)
 {
     Log.Fatal(exception, "Operation={Operation}, Status={Status}", "Startup", "Failed");
-    // non-zero so docker (restart: on-failure), CI and other supervisors see the failure
+    // non-zero so docker can see it
     Environment.ExitCode = 1;
 }
 finally

@@ -33,7 +33,6 @@ public class PaymentProcessor : IPaymentProcessor
         BankResponse? bankResponse = await this.bankHttpClient.PostPayment(paymentRequest);
         PaymentDb paymentDb = this.responseProcessor.ParseBankResponse(paymentRequest, bankResponse);
 
-        // stored once, whatever the outcome (Authorized, Declined or Unavailable)
         await this.paymentRepository.Put(paymentDb);
 
         return paymentDb;
