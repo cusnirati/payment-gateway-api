@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using PaymentGatewayApi.Configuration;
 using PaymentGatewayApi.Models;
 using PaymentGatewayApi.Models.Requests;
 using PaymentGatewayApi.Services;
