@@ -37,7 +37,7 @@ public class BankHttpClient : IBankHttpClient
                 ExpiryDate = expiry,
                 Amount = payment.Amount,
                 Currency = payment.Currency,
-                PaymentId = payment.PaymentId
+                PaymentId = payment.PaymentId.ToString()
             };
 
             // we assume the bank call is idempotent - providing the same PaymentId

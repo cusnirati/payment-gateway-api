@@ -61,30 +61,39 @@ public class PaymentController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public async Task<ActionResult<MerchantResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
-        // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference
-        payment.PaymentId = Guid.NewGuid().ToString();
         // ISO 4217 codes are upper case; normalized here so the bank and the stored record never see "gbp"
         payment.Currency = payment.Currency.ToUpperInvariant();
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
-        foreach (IPaymentRule rule in this.rules)
+        PaymentDb paymentResponse;
+        PaymentDb? storedPayment = await this.paymentRepo.Get(payment.PaymentId.ToString());
+        if (storedPayment is not null && storedPayment.Status != PaymentStatus.Unavailable)
         {
-            ValidationError? error = rule.Validate(payment);
-            if (error is not null)
+            this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Replayed");
+            paymentResponse = storedPayment;
+        }
+        else
+        {
+            foreach (IPaymentRule rule in this.rules)
             {
-                this.ModelState.AddModelError(error.Field, error.ErrorMessage);
+                ValidationError? error = rule.Validate(payment);
+                if (error is not null)
+                {
+                    this.ModelState.AddModelError(error.Field, error.ErrorMessage);
+                }
             }
+
+            if (!this.ModelState.IsValid)
+            {
+                return this.ValidationProblem();
+            }
+
+            paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
         }
 
-        if (!this.ModelState.IsValid)
-        {
-            return this.ValidationProblem();
-        }
-
-        PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
         MerchantResponse merchantResponse = new()
         {
-            PaymentId = payment.PaymentId,
+            PaymentId = paymentResponse.PaymentId,
             PaymentStatus = paymentResponse.Status,
             Amount = paymentResponse.Amount,
             CurrencyCode = paymentResponse.Currency

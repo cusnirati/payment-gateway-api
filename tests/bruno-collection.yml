@@ -68,7 +68,8 @@ items:
             "ExpiryYear": "2026",
             "currency": "GBP",
             "amount": 100,
-            "cvv": "123"
+            "cvv": "123",
+            "paymentId": "{{$randomUUID}}"
           }
       auth: inherit
     settings:
@@ -98,7 +99,8 @@ items:
             "ExpiryYear": "2027",
             "currency": "GBP",
             "amount": 100,
-            "cvv": "123"
+            "cvv": "123",
+            "paymentId": "{{$randomUUID}}"
           }
       auth: inherit
     settings:
@@ -128,7 +130,8 @@ items:
             "ExpiryYear": "2027",
             "currency": "GBP",
             "amount": 100,
-            "cvv": "123"
+            "cvv": "123",
+            "paymentId": "{{$randomUUID}}"
           }
       auth: inherit
     settings:

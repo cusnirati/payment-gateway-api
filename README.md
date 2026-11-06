@@ -13,7 +13,7 @@ More verbose logs than the console ones are in directory `z-logs`.
 Intentionally kept simple (see below) so that it can be easily followed the payment processing flow
 
 ## Out of scope:
-- Idempotency and persisting the payment in the database once it passed validation (before calling the bank).
+- Persisting the payment in the database once it passed validation (before calling the bank).
 - All failures return ```"paymentStatus": "Unavailable"```. No complex failure handling and reconciliation (process a stuck payment).
 - No authentication (hence no filtering by merchantId when getting the payment info).
 - No healthcheck against the database
@@ -36,7 +36,7 @@ docker compose --profile api up
 
 To send a payment, use postman / bruno and the collection in ```tests/bruno-collection.yml```
 
-or send directly via curl
+or send directly via curl. `paymentId` is supplied by the merchant and is the idempotency key: resending it replays an Authorized/Declined result, while an Unavailable one is retried against the bank.
 ```bash
 curl --request POST \
   --url http://localhost:5067/api/payments \
@@ -48,7 +48,8 @@ curl --request POST \
   "ExpiryYear": "2028",
   "currency": "GBP",
   "amount": 100,
-  "cvv": "123"
+  "cvv": "123",
+  "paymentId": "1bfb4527-35b5-4a0c-84d1-c3227fd63b5d"
 }'
 ```
 
