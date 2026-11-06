@@ -10,7 +10,7 @@ https://stripe.com/gb/resources/more/payment-gateways-101#how-does-a-payment-gat
 
 More verbose logs than the console ones are in directory `z-logs`.
 
-Intentionally kept simple (see below) so that it can be easily followed the payment processing flow
+The implementation is intentionally kept simple (see the out-of-scope list below) so the payment processing flow is easy to follow.
 
 ## Out of scope:
 - Persisting the payment in the database once it passed validation (before calling the bank).
