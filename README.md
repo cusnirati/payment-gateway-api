@@ -2,19 +2,21 @@
 
 The objective is to demo software building principles like SOLID and general system design, not to build a fully production ready solution.
 
-Intentionally kept simple so that it can be easily followed step by step in the payment processing flow.
-
-General notes:
-
-- More verbose logs than the console ones are in directory `z-logs`.
-- Ideally (but adding complexity) we would have both idempotency and persisting the payment in the database once it passed validation (before calling the bank)
-- For simplicity all failures return for now ```"paymentStatus": "Unavailable"```. Complex failure handling and reconciliation (a stuck payment) is out of scope.
-- No authentication for now.
-
+Building a simple payment gateway
 
 https://en.wikipedia.org/wiki/Payment_gateway#Typical_transaction_processes
+
 https://stripe.com/gb/resources/more/payment-gateways-101#how-does-a-payment-gateway-work
 
+More verbose logs than the console ones are in directory `z-logs`.
+
+Intentionally kept simple (see below) so that it can be easily followed the payment processing flow
+
+## Out of scope:
+- Idempotency and persisting the payment in the database once it passed validation (before calling the bank).
+- All failures return ```"paymentStatus": "Unavailable"```. No complex failure handling and reconciliation (process a stuck payment).
+- No authentication (hence no filtering by merchantId when getting the payment info).
+- No healthcheck against the database
 
 
 
