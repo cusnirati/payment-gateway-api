@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -68,17 +67,17 @@ public class PaymentController : ControllerBase
         payment.Currency = payment.Currency.ToUpperInvariant();
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
-        List<ValidationError> errors = this.rules
-            .Select(rule => rule.Validate(payment))
-            .OfType<ValidationError>()
-            .ToList();
-        if (errors.Count > 0)
+        foreach (IPaymentRule rule in this.rules)
         {
-            foreach (ValidationError error in errors)
+            ValidationError? error = rule.Validate(payment);
+            if (error is not null)
             {
                 this.ModelState.AddModelError(error.Field, error.ErrorMessage);
             }
+        }
 
+        if (!this.ModelState.IsValid)
+        {
             return this.ValidationProblem();
         }
 

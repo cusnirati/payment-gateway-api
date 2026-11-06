@@ -17,7 +17,7 @@ Intentionally kept simple (see below) so that it can be easily followed the paym
 - All failures return ```"paymentStatus": "Unavailable"```. No complex failure handling and reconciliation (process a stuck payment).
 - No authentication (hence no filtering by merchantId when getting the payment info).
 - No healthcheck against the database
-
+- No certficates / https
 
 
 ## To run / debug
