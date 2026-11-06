@@ -45,7 +45,13 @@ public class PaymentController : ControllerBase
             return this.Problem(statusCode: StatusCodes.Status404NotFound, detail: $"Payment '{paymentId}' was not found.");
         }
 
-        MerchantResponse response = new() { PaymentId = payment.PaymentId, PaymentStatus = payment.Status };
+        MerchantResponse response = new()
+        {
+            PaymentId = payment.PaymentId,
+            PaymentStatus = payment.Status,
+            Amount = payment.Amount,
+            CurrencyCode = payment.Currency
+        };
         return new OkObjectResult(response);
     }
 
@@ -73,9 +79,14 @@ public class PaymentController : ControllerBase
         }
 
         PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
-        MerchantResponse merchantResponse = new() { PaymentId = payment.PaymentId };
-        merchantResponse.PaymentStatus = paymentResponse.Status;
+        MerchantResponse merchantResponse = new()
+        {
+            PaymentId = payment.PaymentId,
+            PaymentStatus = paymentResponse.Status,
+            Amount = paymentResponse.Amount,
+            CurrencyCode = paymentResponse.Currency
+        };
 
-        return this.CreatedAtAction(nameof(this.GetPayment), new { paymentId = payment.PaymentId }, merchantResponse);
+        return this.CreatedAtAction(nameof(this.GetPayment), new { paymentId = merchantResponse.PaymentId }, merchantResponse);
     }
 }
