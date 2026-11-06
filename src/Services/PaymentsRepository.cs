@@ -67,14 +67,22 @@ public class PaymentsRepository : IPaymentsRepository
             {
                 ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
                 ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
-                ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") }
+                ["CreatedAt"] = new AttributeValue { S = this.timeProvider.GetUtcNow().UtcDateTime.ToString("o") },
+                // top level copy of the status so the condition below can read it
+                ["Status"] = new AttributeValue { S = payment.Status.ToString() }
             };
 
+            // a retried Unavailable payment may be overwritten, a final (Authorized/Declined) one never is
             var request = new PutItemRequest
             {
                 TableName = PaymentsTable,
                 Item = item,
-                ConditionExpression = "attribute_not_exists(PaymentId)"
+                ConditionExpression = "attribute_not_exists(PaymentId) OR #Status = :unavailable",
+                ExpressionAttributeNames = new Dictionary<string, string> { ["#Status"] = "Status" },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":unavailable"] = new AttributeValue { S = PaymentStatus.Unavailable.ToString() }
+                }
             };
 
             await this.dynamo.PutItemAsync(request);

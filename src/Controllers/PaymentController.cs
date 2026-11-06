@@ -18,15 +18,15 @@ public class PaymentController : ControllerBase
 {
     private readonly ILogger<PaymentController> logger;
     private readonly IPaymentsRepository paymentRepo;
-    private readonly IValidationOrchestrator validator;
+    private readonly IEnumerable<IPaymentRule> rules;
     private readonly IPaymentProcessor paymentProcessor;
 
     public PaymentController(
-        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IValidationOrchestrator validator, IPaymentProcessor paymentProcessor)
+        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IEnumerable<IPaymentRule> rules, IPaymentProcessor paymentProcessor)
     {
         this.logger = logger;
         this.paymentRepo = paymentRepo;
-        this.validator = validator;
+        this.rules = rules;
         this.paymentProcessor = paymentProcessor;
     }
 
@@ -45,7 +45,13 @@ public class PaymentController : ControllerBase
             return this.Problem(statusCode: StatusCodes.Status404NotFound, detail: $"Payment '{paymentId}' was not found.");
         }
 
-        MerchantResponse response = new() { PaymentId = payment.PaymentId, PaymentStatus = payment.Status };
+        MerchantResponse response = new()
+        {
+            PaymentId = payment.PaymentId,
+            PaymentStatus = payment.Status,
+            Amount = payment.Amount,
+            CurrencyCode = payment.Currency
+        };
         return new OkObjectResult(response);
     }
 
@@ -55,27 +61,44 @@ public class PaymentController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public async Task<ActionResult<MerchantResponse>> PostPayment([FromBody] PaymentRequest payment)
     {
-        // not idempotent for simplicity. Otherwise a merchant would supply a unique payment reference
-        payment.PaymentId = Guid.NewGuid().ToString();
         // ISO 4217 codes are upper case; normalized here so the bank and the stored record never see "gbp"
         payment.Currency = payment.Currency.ToUpperInvariant();
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
-        List<ValidationError> errors = this.validator.ValidatePayment(payment);
-        if (errors.Count > 0)
+        PaymentDb paymentResponse;
+        PaymentDb? storedPayment = await this.paymentRepo.Get(payment.PaymentId.ToString());
+        if (storedPayment is not null && storedPayment.Status != PaymentStatus.Unavailable)
         {
-            foreach (ValidationError error in errors)
+            this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Replayed");
+            paymentResponse = storedPayment;
+        }
+        else
+        {
+            foreach (IPaymentRule rule in this.rules)
             {
-                this.ModelState.AddModelError(error.Field, error.ErrorMessage);
+                ValidationError? error = rule.Validate(payment);
+                if (error is not null)
+                {
+                    this.ModelState.AddModelError(error.Field, error.ErrorMessage);
+                }
             }
 
-            return this.ValidationProblem();
+            if (!this.ModelState.IsValid)
+            {
+                return this.ValidationProblem();
+            }
+
+            paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
         }
 
-        PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
-        MerchantResponse merchantResponse = new() { PaymentId = payment.PaymentId };
-        merchantResponse.PaymentStatus = paymentResponse.Status;
+        MerchantResponse merchantResponse = new()
+        {
+            PaymentId = paymentResponse.PaymentId,
+            PaymentStatus = paymentResponse.Status,
+            Amount = paymentResponse.Amount,
+            CurrencyCode = paymentResponse.Currency
+        };
 
-        return this.CreatedAtAction(nameof(this.GetPayment), new { paymentId = payment.PaymentId }, merchantResponse);
+        return this.CreatedAtAction(nameof(this.GetPayment), new { paymentId = merchantResponse.PaymentId }, merchantResponse);
     }
 }

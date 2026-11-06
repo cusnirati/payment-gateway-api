@@ -70,9 +70,13 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
 
     builder.Services.AddScoped<IPaymentsRepository, PaymentsRepository>();
-    builder.Services.AddScoped<IValidationOrchestrator, ValidationOrchestrator>();
-    builder.Services.AddScoped<ICardDetailsValidator, CardDetailsValidator>();
-    builder.Services.AddScoped<IPaymentDetailsValidator, PaymentDetailsValidator>();
+    // payment rules run in registration order, which is also the order of the validation errors
+    builder.Services.AddScoped<IPaymentRule, CardNumberRule>();
+    builder.Services.AddScoped<IPaymentRule, CardNumberLuhnRule>();
+    builder.Services.AddScoped<IPaymentRule, CardExpiryRule>();
+    builder.Services.AddScoped<IPaymentRule, CardCvvRule>();
+    builder.Services.AddScoped<IPaymentRule, AmountRule>();
+    builder.Services.AddScoped<IPaymentRule, CurrencyRule>();
     builder.Services.AddScoped<IBankResponseProcessor, BankResponseProcessor>();
     builder.Services.AddScoped<IPaymentProcessor, PaymentProcessor>();
 
