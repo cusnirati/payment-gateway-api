@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,15 +19,15 @@ public class PaymentController : ControllerBase
 {
     private readonly ILogger<PaymentController> logger;
     private readonly IPaymentsRepository paymentRepo;
-    private readonly IValidationOrchestrator validator;
+    private readonly IEnumerable<IPaymentRule> rules;
     private readonly IPaymentProcessor paymentProcessor;
 
     public PaymentController(
-        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IValidationOrchestrator validator, IPaymentProcessor paymentProcessor)
+        ILogger<PaymentController> logger, IPaymentsRepository paymentRepo, IEnumerable<IPaymentRule> rules, IPaymentProcessor paymentProcessor)
     {
         this.logger = logger;
         this.paymentRepo = paymentRepo;
-        this.validator = validator;
+        this.rules = rules;
         this.paymentProcessor = paymentProcessor;
     }
 
@@ -67,7 +68,10 @@ public class PaymentController : ControllerBase
         payment.Currency = payment.Currency.ToUpperInvariant();
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
-        List<ValidationError> errors = this.validator.ValidatePayment(payment);
+        List<ValidationError> errors = this.rules
+            .Select(rule => rule.Validate(payment))
+            .OfType<ValidationError>()
+            .ToList();
         if (errors.Count > 0)
         {
             foreach (ValidationError error in errors)
