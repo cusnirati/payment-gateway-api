@@ -11,6 +11,7 @@ public interface ICardDetailsValidator
     ValidationError? ValidateCardNumber(PaymentRequest payment);
     ValidationError? ValidateCardExpiry(PaymentRequest payment);
     ValidationError? ValidateCardCvv(PaymentRequest payment);
+    ValidationError? ValidateCardNumberByLuhnCheck(PaymentRequest payment);
 }
 
 public class CardDetailsValidator : ICardDetailsValidator
@@ -44,8 +45,12 @@ public class CardDetailsValidator : ICardDetailsValidator
             };
         }
 
-        // Luhn: from the rightmost (check) digit, double every second digit,
-        // subtract 9 from any result above 9, and the total must be a multiple of 10
+        return null;
+    }
+
+    // https://stripe.com/gb/resources/more/how-to-use-the-luhn-algorithm-a-guide-in-applications-for-businesses
+    public ValidationError? ValidateCardNumberByLuhnCheck(PaymentRequest payment)
+    {
         int sum = 0;
         bool doubleDigit = false;
         for (int i = payment.CardNumber.Length - 1; i >= 0; i--)

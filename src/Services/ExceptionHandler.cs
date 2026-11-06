@@ -9,12 +9,12 @@ namespace PaymentGatewayApi.Middleware;
 
 // called by UseExceptionHandler, which has already cleared the response and set the 500 status;
 // it isn't called once the response has started, the middleware rethrows so the server aborts the response
-public class ErrorHandler : IExceptionHandler
+public class ExceptionHandler : IExceptionHandler
 {
-    private readonly ILogger<ErrorHandler> logger;
+    private readonly ILogger<ExceptionHandler> logger;
     private readonly IProblemDetailsService problemDetailsService;
 
-    public ErrorHandler(ILogger<ErrorHandler> logger, IProblemDetailsService problemDetailsService)
+    public ExceptionHandler(ILogger<ExceptionHandler> logger, IProblemDetailsService problemDetailsService)
     {
         this.logger = logger;
         this.problemDetailsService = problemDetailsService;

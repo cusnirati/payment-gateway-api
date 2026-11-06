@@ -9,17 +9,17 @@ using Xunit;
 
 namespace PaymentGatewayApiUnitTests.Middleware;
 
-public class ErrorHandlerTests
+public class ExceptionHandlerTests
 {
-    private readonly Mock<ILogger<ErrorHandler>> logger = new();
+    private readonly Mock<ILogger<ExceptionHandler>> logger = new();
     private readonly Mock<IProblemDetailsService> problemDetailsService = new();
     private readonly DefaultHttpContext context = new();
     private readonly InvalidOperationException exception = new("Something failed");
-    private readonly ErrorHandler handler;
+    private readonly ExceptionHandler handler;
 
-    public ErrorHandlerTests()
+    public ExceptionHandlerTests()
     {
-        this.handler = new ErrorHandler(this.logger.Object, this.problemDetailsService.Object);
+        this.handler = new ExceptionHandler(this.logger.Object, this.problemDetailsService.Object);
     }
 
     [Fact]

@@ -61,23 +61,21 @@ public class PaymentController : ControllerBase
         payment.Currency = payment.Currency.ToUpperInvariant();
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", payment.PaymentId, "PostPayment", "Started");
 
-        MerchantResponse merchantResponse = new() { PaymentId = payment.PaymentId };
-
-        List<ValidationError> validationErrors = this.validator.ValidatePayment(payment);
-        if (validationErrors.Count > 0)
+        List<ValidationError> errors = this.validator.ValidatePayment(payment);
+        if (errors.Count > 0)
         {
-            foreach (ValidationError validationError in validationErrors)
+            foreach (ValidationError error in errors)
             {
-                this.ModelState.AddModelError(validationError.Field, validationError.ErrorMessage);
+                this.ModelState.AddModelError(error.Field, error.ErrorMessage);
             }
 
             return this.ValidationProblem();
         }
 
         PaymentDb paymentResponse = await this.paymentProcessor.ExecutePayment(payment);
+        MerchantResponse merchantResponse = new() { PaymentId = payment.PaymentId };
         merchantResponse.PaymentStatus = paymentResponse.Status;
 
         return this.CreatedAtAction(nameof(this.GetPayment), new { paymentId = payment.PaymentId }, merchantResponse);
     }
 }
-

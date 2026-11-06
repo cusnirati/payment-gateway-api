@@ -16,7 +16,6 @@ public interface IPaymentsRepository
     Task Put(PaymentDb payment);
 }
 
-// PaymentRaw should be versioned for compatibility
 public class PaymentsRepository : IPaymentsRepository
 {
     private const string PaymentsTable = "Payments";
@@ -40,7 +39,6 @@ public class PaymentsRepository : IPaymentsRepository
         };
 
         GetItemResponse response = await this.dynamo.GetItemAsync(PaymentsTable, dynamoKey);
-
         if (response.Item == null || response.Item.Count == 0)
         {
             return null;
@@ -60,6 +58,7 @@ public class PaymentsRepository : IPaymentsRepository
         return payment;
     }
 
+    // PaymentRaw should be versioned for compatibility, out of scope
     public async Task Put(PaymentDb payment)
     {
         try

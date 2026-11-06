@@ -55,12 +55,29 @@ try
         context.ProblemDetails.Instance = context.HttpContext.Request.Path;
         context.ProblemDetails.Extensions["traceId"] = Activity.Current?.TraceId.ToString();
     });
-    builder.Services.AddExceptionHandler<ErrorHandler>();
+    builder.Services.AddExceptionHandler<ExceptionHandler>();
 
     builder.Services.AddOptions<GatewayOptions>()
         .Bind(builder.Configuration)
         .ValidateOnStart();
     builder.Services.AddSingleton<IValidateOptions<GatewayOptions>, GatewayOptionsValidator>();
+
+    var awsOptions = builder.Configuration.GetAWSOptions();
+    awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
+    builder.Services.AddDefaultAWSOptions(awsOptions);
+    builder.Services.AddAWSService<IAmazonDynamoDB>();
+    
+    builder.Services.AddSingleton(TimeProvider.System);
+
+    builder.Services.AddScoped<IPaymentsRepository, PaymentsRepository>();
+    builder.Services.AddScoped<IValidationOrchestrator, ValidationOrchestrator>();
+    builder.Services.AddScoped<ICardDetailsValidator, CardDetailsValidator>();
+    builder.Services.AddScoped<IPaymentDetailsValidator, PaymentDetailsValidator>();
+    builder.Services.AddScoped<IBankResponseProcessor, BankResponseProcessor>();
+    builder.Services.AddScoped<IPaymentProcessor, PaymentProcessor>();
+
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
 
     // demo setup: the bank call is retried once (2 attempts total) without backoff, only on transient failures
     // (network error, per-attempt timeout, 408, 429, 5xx)
@@ -73,26 +90,6 @@ try
         .AddResilienceHandler("bank", pipeline => pipeline
             .AddRetry(new HttpRetryStrategyOptions { MaxRetryAttempts = 1, Delay = TimeSpan.Zero })
             .AddTimeout(TimeSpan.FromSeconds(10)));
-
-    var awsOptions = builder.Configuration.GetAWSOptions();
-    awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
-    builder.Services.AddDefaultAWSOptions(awsOptions);
-    builder.Services.AddAWSService<IAmazonDynamoDB>();
-
-    builder.Services.AddSingleton(TimeProvider.System);
-    builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
-
-    builder.Services.AddHealthChecks()
-        .AddCheck<DynamoDbHealthCheck>("dynamodb", tags: ["ready"]);
-
-    builder.Services.AddScoped<IValidationOrchestrator, ValidationOrchestrator>();
-    builder.Services.AddScoped<ICardDetailsValidator, CardDetailsValidator>();
-    builder.Services.AddScoped<IPaymentDetailsValidator, PaymentDetailsValidator>();
-    builder.Services.AddScoped<IBankResponseProcessor, BankResponseProcessor>();
-    builder.Services.AddScoped<IPaymentProcessor, PaymentProcessor>();
-
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
 
     var app = builder.Build();
     app.UseSwagger();

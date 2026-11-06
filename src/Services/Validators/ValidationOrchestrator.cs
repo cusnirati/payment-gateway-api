@@ -27,6 +27,7 @@ public class ValidationOrchestrator : IValidationOrchestrator
         var validationErrors = new List<ValidationError?>();
 
         validationErrors.Add(this.cardValidator.ValidateCardNumber(payment));
+        validationErrors.Add(this.cardValidator.ValidateCardNumberByLuhnCheck(payment));
         validationErrors.Add(this.cardValidator.ValidateCardExpiry(payment));
         validationErrors.Add(this.cardValidator.ValidateCardCvv(payment));
 
