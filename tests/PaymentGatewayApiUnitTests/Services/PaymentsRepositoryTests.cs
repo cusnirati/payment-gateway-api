@@ -10,7 +10,6 @@ using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PaymentGatewayApi.Models;
-using PaymentGatewayApi.Models.Responses;
 using PaymentGatewayApi.Services;
 using Xunit;
 
@@ -55,15 +54,35 @@ public class PaymentsRepositoryTests
         Assert.NotNull(request);
         Assert.Equal("Payments", request.TableName);
         Dictionary<string, AttributeValue> item = request.Item;
-        Assert.Equal(new[] { "CreatedAt", "PaymentId", "PaymentRaw" }, item.Keys.Order());
+        Assert.Equal(new[] { "CreatedAt", "PaymentId", "PaymentRaw", "Status" }, item.Keys.Order());
         Assert.Equal(this.payment.PaymentId, item["PaymentId"].S);
         Assert.Equal("2026-10-22T09:30:15.0000000Z", item["CreatedAt"].S);
+        Assert.Equal("Authorized", item["Status"].S);
         using JsonDocument raw = JsonDocument.Parse(item["PaymentRaw"].S);
         Assert.Equal("Authorized", raw.RootElement.GetProperty("Status").GetString());
     }
 
+    [Theory]
+    [InlineData(PaymentStatus.Authorized, "Authorized")]
+    [InlineData(PaymentStatus.Declined, "Declined")]
+    [InlineData(PaymentStatus.Unavailable, "Unavailable")]
+    public async Task Put_CopiesTheStatusToATopLevelAttribute(PaymentStatus status, string expected)
+    {
+        PutItemRequest? request = null;
+        this.dynamo
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<PutItemRequest, CancellationToken>((written, _) => request = written)
+            .ReturnsAsync(new PutItemResponse());
+        this.payment.Status = status;
+
+        await this.repository.Put(this.payment);
+
+        Assert.NotNull(request);
+        Assert.Equal(expected, request.Item["Status"].S);
+    }
+
     [Fact]
-    public async Task Put_OnlyWritesWhenNoPaymentWithTheSameIdExists()
+    public async Task Put_OnlyWritesANewPaymentOrOverAnUnavailableOne()
     {
         PutItemRequest? request = null;
         this.dynamo
@@ -74,7 +93,9 @@ public class PaymentsRepositoryTests
         await this.repository.Put(this.payment);
 
         Assert.NotNull(request);
-        Assert.Equal("attribute_not_exists(PaymentId)", request.ConditionExpression);
+        Assert.Equal("attribute_not_exists(PaymentId) OR #Status = :unavailable", request.ConditionExpression);
+        Assert.Equal("Status", Assert.Single(request.ExpressionAttributeNames, name => name.Key == "#Status").Value);
+        Assert.Equal("Unavailable", Assert.Single(request.ExpressionAttributeValues, value => value.Key == ":unavailable").Value.S);
     }
 
     [Fact]
@@ -244,7 +265,7 @@ public class PaymentsRepositoryTests
         AmazonDynamoDBException thrown = await Assert.ThrowsAsync<AmazonDynamoDBException>(() => this.repository.Get(this.payment.PaymentId!));
 
         Assert.Same(exception, thrown);
-        // ErrorHandler owns the error log for a failed read, a second one here would log it twice
+        // ExceptionHandler owns the error log for a failed read, a second one here would log it twice
         this.logger.VerifyNoOtherCalls();
     }
 

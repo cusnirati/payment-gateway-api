@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
+using Amazon.Runtime;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,11 +64,22 @@ public class ApiFixture : IAsyncLifetime
             throw new InvalidOperationException($"The WireMock bank simulator at {this.bankSimulator.BaseAddress} is not running. {StartDependencies}", exception);
         }
 
-        // ready means DynamoDB Local answers and the Payments table is active
-        using HttpResponseMessage ready = await this.Api.GetAsync("health/ready");
-        if (ready.StatusCode != HttpStatusCode.OK)
+        // the health checks don't cover DynamoDB, so ask it directly for the Payments table
+        try
         {
-            throw new InvalidOperationException($"DynamoDB Local is not running or has no Payments table. {StartDependencies}");
+            DescribeTableResponse table = await this.dynamo.DescribeTableAsync("Payments");
+            if (table.Table.TableStatus != TableStatus.ACTIVE)
+            {
+                throw new InvalidOperationException($"The DynamoDB Local Payments table is {table.Table.TableStatus}, not ACTIVE. {StartDependencies}");
+            }
+        }
+        catch (AmazonServiceException exception)
+        {
+            throw new InvalidOperationException($"DynamoDB Local is not running or has no Payments table. {StartDependencies}", exception);
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new InvalidOperationException($"DynamoDB Local is not running. {StartDependencies}", exception);
         }
     }
 

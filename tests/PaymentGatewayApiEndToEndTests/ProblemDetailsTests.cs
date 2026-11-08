@@ -22,7 +22,7 @@ public class ProblemDetailsTests
     [InlineData("GET", "/api/payments/not-a-guid", null, null, 404)] // no route matches
     [InlineData("GET", "/api/unknown", null, null, 404)]
     [InlineData("DELETE", "/api/payments", null, null, 405)]
-    [InlineData("POST", "/api/payments", "application/json", """{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": "JPY", "cvv": "123" }""", 400)]
+    [InlineData("POST", "/api/payments", "application/json", """{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": "JPY", "cvv": "123", "paymentId": "1bfb4527-35b5-4a0c-84d1-c3227fd63b5d" }""", 400)] // fails validation
     [InlineData("POST", "/api/payments", "application/json", "{}", 400)] // fails model binding
     [InlineData("POST", "/api/payments", "text/plain", "payment", 415)]
     public async Task ErrorResponse_IsAProblemDetailsBodyWithInstanceAndTraceId(string method, string path, string? contentType, string? body, int status)

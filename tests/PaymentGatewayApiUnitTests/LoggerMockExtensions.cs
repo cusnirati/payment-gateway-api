@@ -22,6 +22,15 @@ public static class LoggerMockExtensions
             Times.Once);
     }
 
+    // for logs written with an exception the test can't get hold of, e.g. one HttpClient throws
+    public static void VerifyLoggedWith<T, TException>(this Mock<ILogger<T>> logger, LogLevel level)
+        where TException : Exception
+    {
+        logger.Verify(
+            l => l.Log(level, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<TException>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
     public static void VerifyNotLogged<T>(this Mock<ILogger<T>> logger, LogLevel level)
     {
         logger.Verify(

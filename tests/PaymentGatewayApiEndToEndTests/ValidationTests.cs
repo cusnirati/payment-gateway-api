@@ -62,6 +62,7 @@ public class ValidationTests
     {
         JsonObject request = new()
         {
+            ["paymentId"] = Guid.NewGuid().ToString(),
             ["cardNumber"] = "1234",
             ["expiryMonth"] = 13,
             ["expiryYear"] = DateTime.UtcNow.Year + 1,
@@ -99,9 +100,12 @@ public class ValidationTests
 
     [Theory]
     [InlineData("""{ "cardNumber": """)]
-    [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": "GBP" }""")]
-    [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": null, "cvv": "123" }""")]
-    [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": "abc", "currency": "GBP", "cvv": "123" }""")]
+    [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": "GBP", "paymentId": "1bfb4527-35b5-4a0c-84d1-c3227fd63b5d" }""")]
+    [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": null, "cvv": "123", "paymentId": "1bfb4527-35b5-4a0c-84d1-c3227fd63b5d" }""")]
+    [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": "abc", "currency": "GBP", "cvv": "123", "paymentId": "1bfb4527-35b5-4a0c-84d1-c3227fd63b5d" }""")]
+    // no paymentId, the merchant must supply the idempotency key
+    [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": "GBP", "cvv": "123" }""")]
+    [InlineData("""{ "cardNumber": "2223000000000007", "expiryMonth": 4, "expiryYear": 2099, "amount": 100, "currency": "GBP", "cvv": "123", "paymentId": "not-a-guid" }""")]
     public async Task PostPayment_UnreadableBody_Returns400Problem(string body)
     {
         using HttpResponseMessage response = await this.fixture.Api.PostAsync("api/payments", new StringContent(body, Encoding.UTF8, "application/json"));

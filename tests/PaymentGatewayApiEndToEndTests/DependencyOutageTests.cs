@@ -30,26 +30,21 @@ public class DependencyOutageTests : IClassFixture<OutageFixture>
     }
 
     [Fact]
-    public async Task HealthReady_ReturnsUnhealthy()
+    public async Task PostPayment_Returns500ProblemWithoutTheExceptionDetails()
     {
+        // the PaymentId lookup comes first: without it the gateway can't tell a replay from a new payment
         using HttpClient api = this.fixture.CreateClient();
 
-        using HttpResponseMessage response = await api.GetAsync("/health/ready");
+        using HttpResponseMessage response = await api.PostAsJsonAsync("/api/payments", TestPayments.Create(TestPayments.AuthorizedCard));
 
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        Assert.Equal("Unhealthy", await response.Content.ReadAsStringAsync());
-    }
-
-    [Fact]
-    public async Task PostPayment_StillAnswersTheMerchantWithUnavailable()
-    {
-        using HttpClient api = this.fixture.CreateClient();
-
-        using HttpResponseMessage response = await api.PostAsJsonAsync("api/payments", TestPayments.Create(TestPayments.AuthorizedCard));
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        JsonElement payment = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Unavailable", payment.GetProperty("paymentStatus").GetString());
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        string body = await response.Content.ReadAsStringAsync();
+        using JsonDocument problem = JsonDocument.Parse(body);
+        Assert.Equal(500, problem.RootElement.GetProperty("status").GetInt32());
+        Assert.Equal("/api/payments", problem.RootElement.GetProperty("instance").GetString());
+        Assert.DoesNotContain("Exception", body);
+        Assert.DoesNotContain("127.0.0.1", body);
     }
 
     [Fact]
