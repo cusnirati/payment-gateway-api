@@ -11,10 +11,12 @@ public static class TestPayments
     public const string DeclinedCard = "5123450000000008"; // even
     public const string UnavailableCard = "4318722273695740"; // zero, the simulator answers 503
 
+    // a new merchant PaymentId on every call, the gateway uses it as the idempotency key
     public static JsonObject Create(string cardNumber)
     {
         return new JsonObject
         {
+            ["paymentId"] = Guid.NewGuid().ToString(),
             ["cardNumber"] = cardNumber,
             ["expiryMonth"] = 4,
             ["expiryYear"] = DateTime.UtcNow.Year + 1,

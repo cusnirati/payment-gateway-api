@@ -1,10 +1,8 @@
 using Microsoft.Extensions.Options;
 using PaymentGatewayApi.Configuration;
-using PaymentGatewayApi.Services;
-using PaymentGatewayApi.Services.Validators;
 using Xunit;
 
-namespace PaymentGatewayApiUnitTests.Services.Validators;
+namespace PaymentGatewayApiUnitTests.Configuration;
 
 public class GatewayOptionsValidatorTests
 {

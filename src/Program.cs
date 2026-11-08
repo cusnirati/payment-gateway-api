@@ -80,6 +80,8 @@ try
     builder.Services.AddScoped<IBankResponseProcessor, BankResponseProcessor>();
     builder.Services.AddScoped<IPaymentProcessor, PaymentProcessor>();
 
+    builder.Services.AddHealthChecks();
+
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
