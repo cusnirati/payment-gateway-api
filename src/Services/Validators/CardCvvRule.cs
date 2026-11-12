@@ -22,8 +22,8 @@ public class CardCvvRule : IPaymentRule
         if (!CvvRegex.IsMatch(payment.Cvv))
         {
             this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsCvvValid", false);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "Validator.IsCvvValid", "Invalid");
 
             return new ValidationError
             {

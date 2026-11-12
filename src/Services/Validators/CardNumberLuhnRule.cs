@@ -37,8 +37,8 @@ public class CardNumberLuhnRule : IPaymentRule
         if (sum % 10 != 0)
         {
             this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsCardNumberLuhnValid", false);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "Validator.IsCardNumberLuhnValid", "Invalid");
 
             return new ValidationError
             {

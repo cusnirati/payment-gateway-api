@@ -23,8 +23,8 @@ public class CurrencyRule : IPaymentRule
         if (!this.options.SupportedCurrencies.Contains(payment.Currency))
         {
             this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsCurrencyCodeValid", false);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "Validator.IsCurrencyCodeValid", "Invalid");
 
             return new ValidationError
             {

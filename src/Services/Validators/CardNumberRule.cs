@@ -22,8 +22,8 @@ public class CardNumberRule : IPaymentRule
         if (!CardNumberRegex.IsMatch(payment.CardNumber))
         {
             this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsCardNumberValid", false);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "Validator.IsCardNumberValid", "Invalid");
 
             return new ValidationError
             {
