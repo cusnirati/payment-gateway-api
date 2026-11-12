@@ -21,8 +21,8 @@ public class CardExpiryRule : IPaymentRule
         if (payment.ExpiryMonth < 1 || payment.ExpiryMonth > 12)
         {
             this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsExpiryMonthValid", false);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "Validator.IsExpiryMonthValid", "Invalid");
 
             return new ValidationError
             {
@@ -34,8 +34,8 @@ public class CardExpiryRule : IPaymentRule
         if (payment.ExpiryYear < 1000 || payment.ExpiryYear > 9999)
         {
             this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsExpiryYearValid", false);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "Validator.IsExpiryYearValid", "Invalid");
 
             return new ValidationError
             {
@@ -52,8 +52,8 @@ public class CardExpiryRule : IPaymentRule
         if (expiry < now)
         {
             this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsExpiryValid", false);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "Validator.IsExpiryValid", "Invalid");
 
             return new ValidationError
             {

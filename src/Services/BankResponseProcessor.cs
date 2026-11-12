@@ -40,7 +40,7 @@ public class BankResponseProcessor : IBankResponseProcessor
         if (bankResponse.Authorized && string.IsNullOrWhiteSpace(bankResponse.AuthorizationCode))
         {
             this.logger.LogError(
-                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Reason={Reason},",
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}, Reason={Reason}",
                 paymentRequest.PaymentId, "ParseBankResponse", "Failed", "MissingAuthorizationCode");
 
             paymentDb.Status = PaymentStatus.Unavailable;

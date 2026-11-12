@@ -18,8 +18,8 @@ public class AmountRule : IPaymentRule
         if (payment.Amount < 1)
         {
             this.logger.LogInformation(
-                "PaymentId={PaymentId}, Operation={Operation}, IsValid={IsValid}",
-                payment.PaymentId, "Validator.IsAmountValid", false);
+                "PaymentId={PaymentId}, Operation={Operation}, Status={Status}",
+                payment.PaymentId, "Validator.IsAmountValid", "Invalid");
 
             return new ValidationError
             {
