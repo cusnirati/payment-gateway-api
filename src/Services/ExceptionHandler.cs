@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace PaymentGatewayApi.Middleware;
+namespace PaymentGatewayApi.Services;
 
 // called by UseExceptionHandler, which has already cleared the response and set the 500 status;
 // it isn't called once the response has started, the middleware rethrows so the server aborts the response
