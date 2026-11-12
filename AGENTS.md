@@ -8,7 +8,7 @@ simulated acquiring bank, and stores the result in DynamoDB.
 - **Never execute any git commands** unless the user explicitly asks for it in that request.
 - **Never write or modify tests** unless the user explicitly asks for it.
 - **Never add private or static methods** unless for tests.
-- **Never add cancellation tokens** unless the user explicitly asks for it.
+- **Never add cancellation tokens** unless the user explicitly asks for it. This is deliberate: a client disconnect must not cancel an in-flight authorization.
 - **Never add partial or sealed classes** unless the user explicitly asks for it.
 
 ## Run
