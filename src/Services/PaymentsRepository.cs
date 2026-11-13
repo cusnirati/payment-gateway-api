@@ -33,7 +33,7 @@ public class PaymentsRepository : IPaymentsRepository
 
     public async Task<PaymentDb?> Get(string paymentId)
     {
-        var dynamoKey = new Dictionary<string, AttributeValue>
+        Dictionary<string, AttributeValue> dynamoKey = new()
         {
             ["PaymentId"] = new AttributeValue { S = paymentId }
         };
@@ -63,7 +63,7 @@ public class PaymentsRepository : IPaymentsRepository
     {
         try
         {
-            var item = new Dictionary<string, AttributeValue>
+            Dictionary<string, AttributeValue> item = new()
             {
                 ["PaymentId"] = new AttributeValue { S = payment.PaymentId },
                 ["PaymentRaw"] = new AttributeValue { S = JsonSerializer.Serialize(payment) },
@@ -73,7 +73,7 @@ public class PaymentsRepository : IPaymentsRepository
             };
 
             // a retried Unavailable payment may be overwritten, a final (Authorized/Declined) one never is
-            var request = new PutItemRequest
+            PutItemRequest request = new()
             {
                 TableName = PaymentsTable,
                 Item = item,
