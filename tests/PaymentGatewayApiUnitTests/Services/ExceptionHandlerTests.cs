@@ -4,10 +4,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
-using PaymentGatewayApi.Middleware;
+using PaymentGatewayApi.Services;
 using Xunit;
 
-namespace PaymentGatewayApiUnitTests.Middleware;
+namespace PaymentGatewayApiUnitTests.Services;
 
 public class ExceptionHandlerTests
 {

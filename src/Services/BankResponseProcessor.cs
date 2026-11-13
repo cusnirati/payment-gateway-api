@@ -21,7 +21,7 @@ public class BankResponseProcessor : IBankResponseProcessor
 
     public PaymentDb ParseBankResponse(PaymentRequest paymentRequest, BankResponse? bankResponse)
     {
-        PaymentDb paymentDb = new PaymentDb();
+        PaymentDb paymentDb = new();
         paymentDb.PaymentId = paymentRequest.PaymentId.ToString();
 
         paymentDb.CardNumberLastFour = paymentRequest.CardNumber.Substring(paymentRequest.CardNumber.Length - 4);

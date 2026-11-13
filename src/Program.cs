@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using Amazon.DynamoDBv2;
+using Amazon.Extensions.NETCore.Setup;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
@@ -25,9 +26,9 @@ Log.Logger = new LoggerConfiguration().WriteTo.Console(new CompactJsonFormatter(
 
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
+    WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-    var environmentVariables = builder.Configuration.Sources
+    EnvironmentVariablesConfigurationSource environmentVariables = builder.Configuration.Sources
         .OfType<EnvironmentVariablesConfigurationSource>()
         .First(source => string.IsNullOrEmpty(source.Prefix));
     builder.Configuration.Sources.Insert(
@@ -62,7 +63,7 @@ try
         .ValidateOnStart();
     builder.Services.AddSingleton<IValidateOptions<GatewayOptions>, GatewayOptionsValidator>();
 
-    var awsOptions = builder.Configuration.GetAWSOptions();
+    AWSOptions awsOptions = builder.Configuration.GetAWSOptions();
     awsOptions.DefaultClientConfig.Timeout = TimeSpan.FromSeconds(10);
     builder.Services.AddDefaultAWSOptions(awsOptions);
     builder.Services.AddAWSService<IAmazonDynamoDB>();
@@ -97,7 +98,7 @@ try
             .AddRetry(new HttpRetryStrategyOptions { MaxRetryAttempts = 1, Delay = TimeSpan.Zero })
             .AddTimeout(TimeSpan.FromSeconds(10)));
 
-    var app = builder.Build();
+    WebApplication app = builder.Build();
     app.UseSwagger();
     app.UseSwaggerUI();
 

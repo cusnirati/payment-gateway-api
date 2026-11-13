@@ -39,7 +39,7 @@ public class PaymentController : ControllerBase
         this.logger.LogInformation("PaymentId={PaymentId}, Operation={Operation}, Status={Status}", paymentId, "GetPayment", "Started");
 
         // would have a filtering by merchant, but out of scope for now
-        var payment = await this.paymentRepo.Get(paymentId.ToString());
+        PaymentDb? payment = await this.paymentRepo.Get(paymentId.ToString());
         if (payment is null)
         {
             return this.Problem(statusCode: StatusCodes.Status404NotFound, detail: $"Payment '{paymentId}' was not found.");

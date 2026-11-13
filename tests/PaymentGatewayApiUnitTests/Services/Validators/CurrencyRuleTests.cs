@@ -48,7 +48,7 @@ public class CurrencyRuleTests
 
         Assert.NotNull(error);
         Assert.Equal("Currency", error.Field);
-        Assert.Equal($"Currency '{currency}' is not supported", error.ErrorMessage);
+        Assert.Equal($"Currency '{currency}' is not supported.", error.ErrorMessage);
         this.logger.VerifyLogged(LogLevel.Information);
     }
 }

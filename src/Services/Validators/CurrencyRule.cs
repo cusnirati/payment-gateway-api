@@ -29,7 +29,7 @@ public class CurrencyRule : IPaymentRule
             return new ValidationError
             {
                 Field = nameof(PaymentRequest.Currency),
-                ErrorMessage = $"Currency '{payment.Currency}' is not supported"
+                ErrorMessage = $"Currency '{payment.Currency}' is not supported."
             };
         }
 
